@@ -1,0 +1,106 @@
+Manage Authors with VARRAY using Package
+==============================================
+
+Step 1: Create an Object Type for Author
+----------------------------------------
+CREATE OR REPLACE TYPE author_obj AS OBJECT (
+    author_id   NUMBER,
+    author_name VARCHAR2(100)
+);
+
+Step 2: Create a VARRAY Type of Authors
+---------------------------------------
+CREATE OR REPLACE TYPE author_varray IS VARRAY(10) OF author_obj;
+
+Step 3: Create a Table with VARRAY column
+-----------------------------------------
+CREATE TABLE book_authors_varray (
+    book_id NUMBER PRIMARY KEY,
+    authors author_varray
+);
+
+Step 4: Insert Sample Data
+--------------------------
+INSERT INTO book_authors_varray
+VALUES (1, author_varray(author_obj(1,'Ankesh'), author_obj(2,'Parth'), author_obj(3,'Jayesh')));
+COMMIT;
+
+Step 5: Create Package Specification
+------------------------------------
+CREATE OR REPLACE PACKAGE pkg_manage_authors IS
+    PROCEDURE insert_author(p_book_id NUMBER, p_author_id NUMBER, p_name VARCHAR2);
+    PROCEDURE update_author(p_book_id NUMBER, p_position NUMBER, p_author_id NUMBER, p_name VARCHAR2);
+    PROCEDURE delete_author(p_book_id NUMBER, p_position NUMBER);
+END pkg_manage_authors;
+/
+
+Step 6: Create Package Body
+---------------------------
+CREATE OR REPLACE PACKAGE BODY pkg_manage_authors IS
+
+    PROCEDURE insert_author(p_book_id NUMBER, p_author_id NUMBER, p_name VARCHAR2) IS
+        v_authors author_varray;
+    BEGIN
+        SELECT authors INTO v_authors
+        FROM book_authors_varray
+        WHERE book_id = p_book_id FOR UPDATE;
+
+        v_authors.EXTEND;
+        v_authors(v_authors.LAST) := author_obj(p_author_id, p_name);
+
+        UPDATE book_authors_varray
+        SET authors = v_authors
+        WHERE book_id = p_book_id;
+        COMMIT;
+    END insert_author;
+
+
+    PROCEDURE update_author(p_book_id NUMBER, p_position NUMBER, p_author_id NUMBER, p_name VARCHAR2) IS
+        v_authors author_varray;
+    BEGIN
+        SELECT authors INTO v_authors
+        FROM book_authors_varray
+        WHERE book_id = p_book_id FOR UPDATE;
+
+        v_authors(p_position) := author_obj(p_author_id, p_name);
+
+        UPDATE book_authors_varray
+        SET authors = v_authors
+        WHERE book_id = p_book_id;
+        COMMIT;
+    END update_author;
+
+
+    PROCEDURE delete_author(p_book_id NUMBER, p_position NUMBER) IS
+        v_authors author_varray;
+    BEGIN
+        SELECT authors INTO v_authors
+        FROM book_authors_varray
+        WHERE book_id = p_book_id FOR UPDATE;
+
+        FOR i IN p_position .. v_authors.COUNT - 1 LOOP
+            v_authors(i) := v_authors(i+1);
+        END LOOP;
+        v_authors.TRIM;
+
+        UPDATE book_authors_varray
+        SET authors = v_authors
+        WHERE book_id = p_book_id;
+        COMMIT;
+    END delete_author;
+
+END pkg_manage_authors;
+/
+
+
+Step 7: Test the Package
+------------------------
+
+-- Insert new author
+EXEC pkg_manage_authors.insert_author(1, 4, 'Jaimin');
+
+-- Update 2nd author
+EXEC pkg_manage_authors.update_author(1, 2, 2, 'Parth Murabiya');
+
+-- Delete 1st author
+EXEC pkg_manage_authors.delete_author(1, 1);

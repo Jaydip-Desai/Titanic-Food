@@ -1,0 +1,38 @@
+
+u-3 p-7
+----------------------------
+
+SELECT
+    name,
+    value
+FROM
+    v$sysstat
+WHERE
+    name IN ('sorts (memory)', 'sorts (disk)');
+
+
+
+SELECT
+    sorts_memory,
+    sorts_disk,
+    (sorts_memory + sorts_disk) AS total_sorts,
+    ROUND((sorts_memory / (sorts_memory + sorts_disk)) * 100, 2) AS sort_memory_hit_ratio_percent
+FROM
+(
+    SELECT
+        MAX(CASE WHEN name = 'sorts (memory)' THEN value ELSE 0 END) AS sorts_memory,
+        MAX(CASE WHEN name = 'sorts (disk)' THEN value ELSE 0 END) AS sorts_disk
+    FROM
+        v$sysstat
+    WHERE
+        name IN ('sorts (memory)', 'sorts (disk)')
+);
+
+
+
+**** Solution ****
+
+- Increase PGA memory allocation by setting `PGA_AGGREGATE_TARGET` higher or enable `WORKAREA_SIZE_POLICY=AUTO` to let Oracle manage memory. 
+- Tune SQL by adding indexes, rewriting queries to reduce sorting or avoid large sorts.                                                      
+- Ensure temporary tablespace has enough space and uses fast disks (SSD if possible).                                                        
+- Schedule heavy operations during off-peak hours or increase system memory.                                                                 

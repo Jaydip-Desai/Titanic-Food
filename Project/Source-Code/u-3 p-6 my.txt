@@ -1,0 +1,33 @@
+  U-3 P-6
+----------------------
+
+
+
+EXPLAIN PLAN
+  SET STATEMENT_ID = 'StudentData'
+  FOR
+SELECT *
+  FROM student
+ WHERE student_id > 5;
+
+
+
+
+SELECT LPAD(' ', 2*(LEVEL-1)) ||
+       operation ||
+       NVL2(options, ' ('||options||')', '') ||
+       NVL2(object_name, ' on '||object_name, '') ||
+       CASE WHEN position IS NOT NULL THEN ' [pos='||position||']' ELSE '' END
+       AS plan_line,
+       id, parent_id, position, cost, cpu_cost, io_cost, cardinality, bytes
+FROM   plan_table
+WHERE  statement_id = 'StudentData'
+START WITH id = 0
+CONNECT BY PRIOR id = parent_id
+ORDER SIBLINGS BY id;
+
+
+
+SELECT * FROM TABLE(DBMS_XPLAN.DISPLAY(NULL, 'StudentData', 'TYPICAL'));
+
+DELETE FROM plan_table;

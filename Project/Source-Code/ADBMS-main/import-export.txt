@@ -1,0 +1,11 @@
+exp mca36@orcl19 file=mca36_dept_emp.dmp log=mca36_dept_emp.log tables=(author) rows=y indexes=y grants=y triggers=y constraints=y
+
+-------------------------------------------------------------------
+imp mca48@orcl19 file=mca36_dept_emp.dmp log=mca36_dept_emp.log fromuser=mca36 touser=mca48 tables=(author) ignore=y
+
+
+----------------------------------------------------------------------------------------------------------------------------------------
+exp mca36@orcl19 file=mca36_data_only.dmp log=mca36_data_only_export.log owner=mca36 rows=y indexes=n grants=n triggers=n constraints=n
+
+imp mca48@orcl19 file=mca36_data_only.dmp log=mca48_data_only_import.log fromuser=mca36 touser=mca48 ignore=y
+

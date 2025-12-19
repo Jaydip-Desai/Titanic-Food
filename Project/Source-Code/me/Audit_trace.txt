@@ -1,0 +1,91 @@
+-- Simple Staff Audit
+
+SET LINESIZE 200
+SET WRAP OFF
+
+COLUMN staff_id FORMAT 999
+COLUMN staff_name FORMAT A10
+COLUMN dept FORMAT A8
+COLUMN pay FORMAT 99999
+COLUMN operation FORMAT A8
+COLUMN column_name FORMAT A10
+COLUMN old_value FORMAT A10
+COLUMN new_value FORMAT A10
+COLUMN action_dt FORMAT A19
+
+-- Audit table
+DROP TABLE staff_audit PURGE;
+
+CREATE TABLE staff_audit (
+    staff_id NUMBER,
+    staff_name VARCHAR2(20),
+    dept VARCHAR2(20),
+    pay NUMBER,
+    operation VARCHAR2(10),
+    column_name VARCHAR2(20),
+    old_value VARCHAR2(50),
+    new_value VARCHAR2(50),
+    action_dt TIMESTAMP
+);
+
+-- Main table
+DROP TABLE staff PURGE;
+
+CREATE TABLE staff (
+    staff_id NUMBER PRIMARY KEY,
+    staff_name VARCHAR2(20),
+    dept VARCHAR2(20),
+    pay NUMBER
+);
+
+-- Trigger
+CREATE OR REPLACE TRIGGER trg_staff_audit
+AFTER INSERT OR UPDATE OR DELETE ON staff
+FOR EACH ROW
+BEGIN
+    IF INSERTING THEN
+        INSERT INTO staff_audit
+        VALUES (:NEW.staff_id,:NEW.staff_name,:NEW.dept,:NEW.pay,
+                'INSERT','-','-','-',SYSTIMESTAMP);
+
+    ELSIF UPDATING THEN
+        INSERT INTO staff_audit
+        VALUES (:NEW.staff_id,:NEW.staff_name,:NEW.dept,:NEW.pay,
+                'UPDATE','PAY',:OLD.pay,:NEW.pay,SYSTIMESTAMP);
+
+    ELSIF DELETING THEN
+        INSERT INTO staff_audit
+        VALUES (:OLD.staff_id,:OLD.staff_name,:OLD.dept,:OLD.pay,
+                'DELETE','-','-','-',SYSTIMESTAMP);
+    END IF;
+END;
+/
+
+-- Procedure
+CREATE OR REPLACE PROCEDURE add_staff(
+    p_id NUMBER, p_name VARCHAR2, p_dept VARCHAR2, p_pay NUMBER)
+AS
+BEGIN
+    INSERT INTO staff VALUES(p_id,p_name,p_dept,p_pay);
+    COMMIT;
+END;
+/
+
+-- Demo
+EXEC add_staff(1,'Raj','HR',20000);
+UPDATE staff SET pay=25000 WHERE staff_id=1;
+DELETE FROM staff WHERE staff_id=1;
+COMMIT;
+
+-- Output
+SELECT
+    staff_id,
+    staff_name,
+    dept,
+    pay,
+    operation,
+    column_name,
+    old_value,
+    new_value,
+    TO_CHAR(action_dt,'DD-MM-YYYY HH24:MI:SS') AS action_dt
+FROM staff_audit;

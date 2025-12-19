@@ -1,0 +1,95 @@
+Package to Insert, Update, and Delete Authors in Nested Table
+=============================================================
+
+Step 1: Create Object Type
+--------------------------
+CREATE OR REPLACE TYPE author_obj AS OBJECT (
+    author_id   NUMBER,
+    author_name VARCHAR2(100)
+);
+
+Step 2: Create Nested Table Type
+--------------------------------
+CREATE OR REPLACE TYPE author_nested IS TABLE OF author_obj;
+
+Step 3: Create Table with Nested Table Column
+---------------------------------------------
+CREATE TABLE book_authors (
+    book_id NUMBER PRIMARY KEY,
+    authors author_nested
+) NESTED TABLE authors STORE AS authors_tab;
+
+Step 4: Insert Sample Data
+--------------------------
+INSERT INTO book_authors 
+VALUES (1, author_nested(author_obj(1,'Tushar'), author_obj(2,'Ankesh')));
+COMMIT;
+
+Step 5: Create Package Specification
+------------------------------------
+CREATE OR REPLACE PACKAGE author_pkg IS
+    PROCEDURE insert_author(p_book_id NUMBER, p_author_id NUMBER, p_name VARCHAR2);
+    PROCEDURE update_author(p_book_id NUMBER, p_position NUMBER, p_author_id NUMBER, p_name VARCHAR2);
+    PROCEDURE delete_author(p_book_id NUMBER, p_position NUMBER);
+END author_pkg;
+/
+
+Step 6: Create Package Body
+---------------------------
+CREATE OR REPLACE PACKAGE BODY author_pkg IS
+
+    PROCEDURE insert_author(p_book_id NUMBER, p_author_id NUMBER, p_name VARCHAR2) IS
+        v_authors author_nested;
+    BEGIN
+        SELECT authors INTO v_authors 
+        FROM book_authors 
+        WHERE book_id = p_book_id FOR UPDATE;
+
+        v_authors.EXTEND;
+        v_authors(v_authors.LAST) := author_obj(p_author_id, p_name);
+
+        UPDATE book_authors SET authors = v_authors WHERE book_id = p_book_id;
+        COMMIT;
+    END insert_author;
+
+    PROCEDURE update_author(p_book_id NUMBER, p_position NUMBER, p_author_id NUMBER, p_name VARCHAR2) IS
+        v_authors author_nested;
+    BEGIN
+        SELECT authors INTO v_authors 
+        FROM book_authors 
+        WHERE book_id = p_book_id FOR UPDATE;
+
+        v_authors(p_position) := author_obj(p_author_id, p_name);
+
+        UPDATE book_authors SET authors = v_authors WHERE book_id = p_book_id;
+        COMMIT;
+    END update_author;
+
+    PROCEDURE delete_author(p_book_id NUMBER, p_position NUMBER) IS
+        v_authors author_nested;
+    BEGIN
+        SELECT authors INTO v_authors 
+        FROM book_authors 
+        WHERE book_id = p_book_id FOR UPDATE;
+
+        v_authors.DELETE(p_position);
+
+        UPDATE book_authors SET authors = v_authors WHERE book_id = p_book_id;
+        COMMIT;
+    END delete_author;
+
+END author_pkg;
+/
+
+Step 7: Test the Package
+------------------------
+
+-- Insert new author
+EXEC author_pkg.insert_author(1, 3, 'Meera');
+
+-- Update 2nd author
+EXEC author_pkg.update_author(1, 2, 2, 'Ankit');
+
+-- Delete 1st author
+EXEC author_pkg.delete_author(1, 1);
+

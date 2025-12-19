@@ -1,0 +1,20 @@
+U1-P1	Project 1
+U2-P1	Export full schema and Import in the scott schema of the database. And also explain each parameter with Export and Import. And Load external data into your schema with the help of all the three methods
+U3-P1	Write minimum three query to find out fragmentation in database. Derive your conclusion for the result of the query.
+U3-P2	Write a query to identify lock in the database and generate formatted output for better understanding.
+U3-P3	Write a query to identify latch contention in the database and format output for better understanding.
+U3-P4	Write query to find out hit ratio for the data buffer cache and write your conclusion.
+U3-P5	Write different queries to find out hit ratio for the shared pool area and redo log each.
+U3-P6	Write a query to find out what will be the execution plan of the query. Derive all the steps
+U3-P7	Write a query to find out sort area contention in data base and give right solution as a dba
+U3-P8	Write a procedure to update, delete and insert new element in varray.
+U3-P9	Write a procedure to update, delete and insert new element in nested table.
+	
+U4-P1	Find out fragmentation using DBMS_SPACE package and show out put.
+U4-P2	With the use of DBMS_DDL package recompile your all modified package or procedure in you schema.
+U4-P3	With the use of DBMS_DDL package analyz table , index and cluster in your schema. 
+U4-P4	Export your schema without procedure and import into scott schema and load data from sequential file and dump into scott schema
+U4-P5	 Find out database fragmentation, show fragmentation by more than one method and give minimum three solutions to resolve it. 
+U4-P6	Implement dynamic sql using DBMS_SQL package
+U4-P7	Put your job for insert new five records into student database using DBMS_JOB package.
+U4-P8	With the use of DBMS_DDL package recompile your all modified package or procedure in you schema.

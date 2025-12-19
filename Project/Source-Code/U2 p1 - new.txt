@@ -1,0 +1,64 @@
+Practical-1
+------------
+- Export full schema and Import in the scott schema of the database. 
+- And also explain each parameter with Export and Import. 
+- And Load external data into your schema with the help of all the three method.
+
+
+Export entire :
+exp mca3@orcl19 file=mca3_schema.dmp log=mca3_export.log owner=mca3 rows=y indexes=y grants=y triggers=y constraints=y
+
+
+Export specific tables :
+exp mca3@orcl19 file=mca3_dept_emp.dmp log=mca3_dept_emp.log tables=(DEPARTMENT,EMPLOYEE) rows=y indexes=y grants=y triggers=y constraints=y
+
+
+
+Export schema excluding a specific object type (table+data):
+exp mca3@orcl19 file=mca3_only_tables.dmp log=mca3_only_tables.log owner=mca3 rows=Y indexes=N grants=N triggers=N constraints=N
+
+
+Export only the data(rows only) :
+exp mca3@orcl19 file=mca3_data_only.dmp log=mca3_data_only_export.log owner=mca3 rows=y indexes=n grants=n triggers=n constraints=n
+
+
+Export schema including specific tables but without indexes:
+exp mca3@orcl19 file=mca3_no_indexes.dmp log=mca3_no_indexes_export.log tables=(DEPARTMENT,EMPLOYEE) rows=y indexes=n grants=y triggers=y constraints=y
+
+Full database Export:
+exp system/manager@orcl19 file=full_db.dmp log=full_db.log full=y
+
+Export by Query Condition (using QUERY parameter):
+exp mca3@orcl19 file=emp_sales.dmp log=emp_sales.log tables=EMPLOYEE query="WHERE DEPTNO=10"
+
+
+
+
+
+
+Import the schema into Another User :
+imp mca1@orcl19 file=mca3_schema.dmp log=mca3_import.log fromuser=mca3 touser=mca1
+
+
+Import schema excluding a specific table :
+imp mca3@orcl19 file=mca3_schema.dmp log=mca3_import_exclude_table.log fromuser=mca3 touser=mca3 tables=(DEPARTMENT,EMPLOYEE) ignore=y
+
+
+Import specific tables :
+imp mca3@orcl19 file=mca3_schema.dmp log=mca3_import_tables.log fromuser=mca3 touser=mca3 tables=(DEPARTMENT,EMPLOYEE)
+
+Import data excluding constraints :
+imp mca3@orcl19 file=mca3_schema.dmp log=mca3_import_no_constraints.log fromuser=mca3 touser=mca3 constraints=n
+
+
+Import data overriding existing data:
+imp mca3@orcl19 file=mca3_schema.dmp log=mca3_import_full.log full=y
+
+Import with Commit after each row (useful for large files):
+imp mca3@orcl19 file=mca3_bigfile.dmp log=mca3_commit.log commit=y
+
+Import with Buffer Size:
+imp mca3@orcl19 file=mca3_perf.dmp log=mca3_perf.log fromuser=mca3 touser=scott buffer=40960
+
+
+

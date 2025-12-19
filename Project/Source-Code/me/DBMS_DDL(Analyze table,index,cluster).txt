@@ -1,0 +1,72 @@
+-- Create Cluster
+CREATE CLUSTER sales_cluster (store_id NUMBER(5)) SIZE 1K;
+
+-- Cluster Index
+CREATE INDEX sales_cluster_idx
+ON CLUSTER sales_cluster;
+
+-- Tables in Cluster
+CREATE TABLE store (
+    store_id   NUMBER(5) PRIMARY KEY,
+    store_name VARCHAR2(50)
+)
+CLUSTER sales_cluster (store_id);
+
+CREATE TABLE sales (
+    sale_id   NUMBER PRIMARY KEY,
+    store_id  NUMBER(5),
+    amount    NUMBER(10,2),
+    sale_date DATE
+)
+CLUSTER sales_cluster (store_id);
+
+-- Normal Table 1
+CREATE TABLE customer (
+    customer_id NUMBER PRIMARY KEY,
+    customer_name VARCHAR2(50),
+    city VARCHAR2(50)
+);
+
+CREATE INDEX customer_idx
+ON customer (customer_name);
+
+-- Normal Table 2
+CREATE TABLE orders (
+    order_id NUMBER PRIMARY KEY,
+    customer_id NUMBER,
+    order_amount NUMBER(10,2)
+);
+
+CREATE INDEX orders_idx
+ON orders (customer_id);
+
+-- Analyze All Objects
+BEGIN
+  DBMS_DDL.ANALYZE_OBJECT('CLUSTER', 'SYSTEM', 'SALES_CLUSTER', 'COMPUTE');
+  DBMS_DDL.ANALYZE_OBJECT('TABLE', 'SYSTEM', 'STORE', 'COMPUTE');
+  DBMS_DDL.ANALYZE_OBJECT('TABLE', 'SYSTEM', 'SALES', 'COMPUTE');
+  DBMS_DDL.ANALYZE_OBJECT('INDEX', 'SYSTEM', 'SALES_CLUSTER_IDX', 'COMPUTE');
+
+  DBMS_DDL.ANALYZE_OBJECT('TABLE', 'SYSTEM', 'CUSTOMER', 'COMPUTE');
+  DBMS_DDL.ANALYZE_OBJECT('TABLE', 'SYSTEM', 'ORDERS', 'COMPUTE');
+
+  DBMS_DDL.ANALYZE_OBJECT('INDEX', 'SYSTEM', 'CUSTOMER_IDX', 'COMPUTE');
+  DBMS_DDL.ANALYZE_OBJECT('INDEX', 'SYSTEM', 'ORDERS_IDX', 'COMPUTE');
+END;
+/
+
+-- Check Table Stats
+COLUMN table_name FORMAT A20
+SELECT table_name, num_rows, blocks, last_analyzed
+FROM user_tables
+WHERE table_name IN ('STORE','SALES','CUSTOMER','ORDERS');
+
+-- Check Index Stats
+SELECT index_name, table_name, distinct_keys, leaf_blocks, last_analyzed
+FROM user_indexes
+WHERE index_name IN ('SALES_CLUSTER_IDX','CUSTOMER_IDX','ORDERS_IDX');
+
+-- Check Cluster-related Tables
+SELECT table_name, last_analyzed
+FROM user_tab_statistics
+WHERE table_name IN ('STORE','SALES');

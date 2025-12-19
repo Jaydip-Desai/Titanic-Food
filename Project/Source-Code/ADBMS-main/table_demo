@@ -1,0 +1,18 @@
+CREATE TABLE author (
+    BOOK_ID     NUMBER,
+    AUTHOR_ID   NUMBER,
+    TITLE       VARCHAR2(100),
+    PRICE       NUMBER(10,2)
+)
+TABLESPACE stud
+STORAGE (
+    INITIAL     5K
+    NEXT        5K
+    MINEXTENTS  1
+    MAXEXTENTS  5
+);
+=====================================================================
+insert into author values(1,102,'ankesh',1000);
+===========================================================
+--column book_id format a20;
+

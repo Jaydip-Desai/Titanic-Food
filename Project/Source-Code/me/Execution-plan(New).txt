@@ -1,0 +1,58 @@
+CREATE TABLE orders_new (
+    order_id     NUMBER PRIMARY KEY,
+    customer_id  NUMBER,
+    amount       NUMBER(10,2),
+    order_date   DATE
+);
+
+
+INSERT INTO orders_new VALUES (1, 101, 500.00, SYSDATE);
+INSERT INTO orders_new VALUES (2, 102, 250.00, SYSDATE);
+INSERT INTO orders_new VALUES (3, 103, 900.00, SYSDATE);
+
+COMMIT;
+
+
+EXPLAIN PLAN FOR
+SELECT * FROM orders_new WHERE customer_id = 101;
+
+
+
+SELECT object_name,
+       object_owner,
+       operation,
+       id,
+       depth
+FROM   plan_table
+ORDER BY id;
+
+
+SELECT *
+FROM   TABLE(DBMS_XPLAN.DISPLAY);
+
+
+SELECT * FROM orders_new WHERE customer_id = 101;
+
+
+
+COLUMN object_name FORMAT A20
+COLUMN object_owner FORMAT A15
+COLUMN operation FORMAT A20
+COLUMN id FORMAT 999
+COLUMN depth FORMAT 999
+
+SELECT
+    NVL(object_name,' ') AS object_name,
+    NVL(object_owner,' ') AS object_owner,
+    operation,
+    id,
+    depth
+FROM plan_table
+ORDER BY id;
+
+
+
+
+SELECT plan_table_output
+FROM   TABLE(DBMS_XPLAN.DISPLAY_CURSOR(NULL, NULL, 'BASIC'));
+

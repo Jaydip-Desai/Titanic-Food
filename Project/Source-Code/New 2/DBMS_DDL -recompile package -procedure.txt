@@ -1,0 +1,42 @@
+===================[CREATE PACKAGE]==============================
+CREATE OR REPLACE PACKAGE emp_pkg IS
+    PROCEDURE show_emp(p_empno NUMBER);
+END emp_pkg;
+/
+-----------------------------------------------------------------------
+CREATE OR REPLACE PACKAGE BODY emp_pkg IS
+    PROCEDURE show_emp(p_empno NUMBER) IS
+    BEGIN
+        DBMS_OUTPUT.PUT_LINE('Employee no: ' || p_empno);
+    END;
+END emp_pkg;
+/
+======================[CHECK THE PACKAGE IS CREATED]================================
+SELECT object_name, object_type, status
+FROM user_objects
+WHERE object_name = 'EMP_PKG';
+==============================[recompile package]======================================================
+
+BEGIN
+    DBMS_DDL.ALTER_COMPILE('PACKAGE BODY', 'MCA36', 'EMP_PKG');
+END;
+/
+=========================================================================================================================
+=====================[create PROCEDURE]=======================================
+CREATE OR REPLACE PROCEDURE emp_proc AS
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('Employee procedure executed successfully!');
+END;
+/
+------------------[EXECUTE PROCEDURE]--------------------
+set serveroutput on;
+EXEC emp_proc;
+---------------------------------------
+SELECT object_name, object_type, status
+FROM user_objects
+WHERE object_name = 'EMP_PROC';
+---------------------------[RECOMPILE PROCEDURE]-------------------
+BEGIN
+    DBMS_DDL.ALTER_COMPILE('PROCEDURE', 'MCA36', 'EMP_PROC');
+END;
+/

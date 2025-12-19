@@ -1,0 +1,406 @@
+🔷 U3-P3 — Identify Latch Contention in the Database
+Description (Detailed):
+
+In Oracle, latches are low-level serialization mechanisms used to protect shared memory structures in the SGA (System Global Area).
+When multiple sessions try to access the same memory structure at the same time, latch contention occurs.
+Latch contention slows down the database performance, increases wait time, and affects concurrency.
+
+This practical identifies latch contention by analyzing latch statistics stored in v$latch.
+The ratio of misses / gets indicates how often a latch request failed initially.
+
+Query (Corrected & Safe — Avoids Division by Zero):
+
+SELECT 
+    name,
+    gets,
+    misses,
+    immediate_gets,
+    immediate_misses,
+    ROUND((misses / NULLIF(gets,0)) * 100, 2) AS miss_ratio
+FROM v$latch
+ORDER BY miss_ratio DESC;
+
+Explanation:
+
+GETS → Number of latch requests
+
+MISSES → Times latch not available
+
+MISS_RATIO → % of failed latch attempts
+
+Using NULLIF(gets,0) prevents division by zero errors.
+
+Conclusion:
+
+miss_ratio > 1% → Latch contention exists (BAD)
+
+miss_ratio 0–1% → Acceptable
+
+miss_ratio 0% → Ideal (no contention)
+
+🔷 U3-P4 — Find Buffer Cache Hit Ratio
+Description:
+
+Buffer cache stores recently accessed data blocks in memory.
+A higher hit ratio means most queries are served from memory → faster performance.
+A lower hit ratio means more physical disk I/O → slower performance.
+
+Hit ratio is calculated using statistics stored in v$sysstat.
+
+Query:
+SELECT 
+    ROUND(
+        (1 - (pr.value / (lr.value + bg.value))) * 100,
+        2
+    ) AS buffer_cache_hit_ratio
+FROM 
+    v$sysstat pr,
+    v$sysstat lr,
+    v$sysstat bg
+WHERE 
+    pr.name = 'physical reads'
+    AND lr.name = 'session logical reads'
+    AND bg.name = 'db block gets';
+
+Explanation:
+
+physical reads → blocks read from disk
+
+logical reads → blocks read from memory
+
+Higher logical reads = better performance
+
+Hit Ratio = 1 - physical_reads / total_logical_reads
+
+Conclusion:
+
+> 90% → Excellent
+
+80–90% → Good
+
+< 80% → Increase DB_CACHE_SIZE
+
+🔷 U3-P5 — Hit Ratio for Shared Pool & Redo Log Buffer
+Description:
+Shared Pool
+
+The shared pool stores SQL execution plans, PL/SQL code, dictionary cache etc.
+High hit ratio means SQL statements are reused efficiently.
+
+Redo Log Buffer
+
+The redo buffer temporarily stores redo entries before writing to redo log files.
+High redo buffer hit ratio means the buffer is large enough to handle transactions efficiently.
+
+A. Shared Pool Hit Ratio
+SELECT 
+    SUM(pinhits) / SUM(pins) AS shared_pool_hit_ratio
+FROM v$librarycache;
+
+Interpretation:
+
+95% → Good
+
+< 90% → Increase SHARED_POOL_SIZE
+
+B. Redo Log Buffer Hit Ratio (Correct Query)
+SELECT 
+    ROUND(
+        (1 - ( rbar.value / re.value )) * 100,
+        2
+    ) AS redo_log_buffer_hit_ratio
+FROM 
+    v$sysstat rbar,
+    v$sysstat re
+WHERE 
+    rbar.name = 'redo buffer allocation retries'
+    AND re.name  = 'redo entries';
+
+Interpretation:
+
+99% → Excellent
+
+95–99% → Acceptable
+
+< 95% → Increase LOG_BUFFER
+
+🔷 U3-P6 — Execution Plan of a Query
+Description:
+
+Execution plans show how Oracle executes a query internally.
+It displays operations like full table scan, index scan, join methods, filtering, and estimated cost.
+Understanding execution plans helps optimize SQL performance.
+
+Your table:
+EMPLOYEE(emp_id, emp_name, dob, doj, dept_id, gender, contact, email)
+So the correct filtering column is dept_id, not deptno.
+
+Query:
+EXPLAIN PLAN
+SET STATEMENT_ID = 'emp_plan'
+FOR
+SELECT * FROM employee WHERE dept_id = 102;
+
+Display Plan:
+SELECT * FROM TABLE(DBMS_XPLAN.DISPLAY());
+
+Derived Steps Explanation:
+
+Parsing: SQL syntax checked
+
+Binding: Parameters resolved
+
+Optimization: Best path chosen
+
+Row Source Generation: Access path selected
+
+Execution: Data fetched according to plan
+
+Most common result:
+TABLE ACCESS FULL (EMPLOYEE) → because no index exists on dept_id
+
+Conclusion:
+
+Create index to improve performance:
+
+CREATE INDEX idx_emp_deptid ON employee(dept_id);
+
+🔷 U3-P7 — Sort Area Contention
+Description:
+
+Sorting in Oracle is done either in memory (PGA) or in TEMP tablespace.
+If memory is insufficient, Oracle uses TEMP, which is slower and causes contention.
+
+Query:
+SELECT name, value
+FROM v$sysstat
+WHERE name LIKE 'sort%';
+
+Interpretation:
+
+High sorts (disk) → insufficient memory
+
+High sorts (memory) → good
+
+Solutions (DBA):
+
+Increase PGA_AGGREGATE_TARGET
+
+Increase TEMP tablespace size
+
+Create indexes to avoid sorting
+
+🔷 U3-P8 — Procedure for Insert, Update, Delete in VARRAY
+Description:
+
+VARRAY is an ordered collection with a fixed maximum size.
+This practical performs all operations (insert, update, delete) on a VARRAY.
+
+Create Type
+CREATE OR REPLACE TYPE num_varray AS VARRAY(10) OF NUMBER;
+/
+
+Procedure
+CREATE OR REPLACE PROCEDURE manage_varray IS
+    v num_varray := num_varray(10,20,30);
+BEGIN
+    v.EXTEND;
+    v(4) := 40;        -- Insert
+
+    v(2) := 25;        -- Update
+
+    v.DELETE(3);       -- Delete
+
+    DBMS_OUTPUT.PUT_LINE('Varray operations completed successfully.');
+END;
+/
+
+🔷 U3-P9 — Procedure for Insert, Update, Delete in Nested Table
+Description:
+
+Nested table is an unbounded, unordered collection.
+This practical performs all CRUD operations on a nested table stored in a relational table.
+
+Create Type
+CREATE OR REPLACE TYPE num_table AS TABLE OF NUMBER;
+/
+
+Create Table
+CREATE TABLE nt_tab(
+    id NUMBER,
+    nums num_table
+) NESTED TABLE nums STORE AS nums_store;
+
+Procedure
+CREATE OR REPLACE PROCEDURE manage_nested IS
+BEGIN
+    INSERT INTO nt_tab VALUES(1, num_table(10,20,30));
+
+    UPDATE nt_tab
+    SET nums = num_table(5,15,25)
+    WHERE id = 1;
+
+    DELETE FROM nt_tab WHERE id = 1;
+
+    DBMS_OUTPUT.PUT_LINE('Nested table operations completed.');
+END;
+/
+
+=========================================================
+⭐ UNIT – 4 PRACTICALS
+=========================================================
+🔷 U4-P1 — Find Fragmentation Using DBMS_SPACE
+Description:
+
+Fragmentation occurs when free space is broken into small pieces.
+DBMS_SPACE helps identify unused space inside segments.
+
+Query:
+DECLARE
+    total_blocks NUMBER;
+    total_bytes NUMBER;
+    unused_blocks NUMBER;
+    unused_bytes NUMBER;
+BEGIN
+    DBMS_SPACE.UNUSED_SPACE(
+        segment_owner => 'SCOTT',
+        segment_name  => 'EMPLOYEE',
+        segment_type  => 'TABLE',
+        total_blocks  => total_blocks,
+        total_bytes   => total_bytes,
+        unused_blocks => unused_blocks,
+        unused_bytes  => unused_bytes
+    );
+
+    DBMS_OUTPUT.PUT_LINE('Total Bytes: ' || total_bytes);
+    DBMS_OUTPUT.PUT_LINE('Unused Bytes: ' || unused_bytes);
+END;
+/
+
+🔷 U4-P2 — Recompile PL/SQL Objects using DBMS_DDL
+Description:
+
+After modifying a PL/SQL procedure or package, recompiling avoids invalid object errors.
+
+Query:
+BEGIN
+    DBMS_DDL.ALTER_COMPILE('PROCEDURE','SCOTT','MANAGE_VARRAY');
+    DBMS_DDL.ALTER_COMPILE('PROCEDURE','SCOTT','MANAGE_NESTED');
+END;
+/
+
+🔷 U4-P3 — Analyze Table, Index, Cluster
+Description:
+
+Analyzing objects gathers statistics for the optimizer to generate better execution plans.
+
+Query:
+BEGIN
+    DBMS_DDL.ANALYZE_OBJECT('TABLE','SCOTT','EMPLOYEE','COMPUTE');
+    DBMS_DDL.ANALYZE_OBJECT('TABLE','SCOTT','DEPARTMENT','ESTIMATE');
+END;
+/
+
+🔷 U4-P4 — Export, Import, and Load Data
+Description:
+
+Export/Import allows transferring schema objects.
+SQL*Loader loads data from text files.
+
+Export:
+exp scott/tiger file=scott.dmp owner=scott
+
+Import:
+imp scott/tiger file=scott.dmp ignore=y
+
+Load Data (SQL*Loader):
+
+load.ctl
+
+LOAD DATA
+INFILE 'student.txt'
+INTO TABLE student
+FIELDS TERMINATED BY ','
+(id, name, marks)
+
+
+Run:
+
+sqlldr scott/tiger control=load.ctl
+
+🔷 U4-P5 — Database Fragmentation (Multiple Methods)
+Method 1 — Free Space
+SELECT tablespace_name, COUNT(*) fragments
+FROM dba_free_space
+GROUP BY tablespace_name;
+
+Method 2 — Segment Inspection
+SELECT segment_name, bytes
+FROM dba_segments
+WHERE owner = 'SCOTT';
+
+Method 3 — DBMS_SPACE
+
+(Shown earlier)
+
+Solutions:
+
+SHRINK table
+
+MOVE table to another tablespace
+
+COALESCE tablespace
+
+REBUILD indexes
+
+🔷 U4-P6 — Dynamic SQL using DBMS_SQL
+Description:
+
+Dynamic SQL allows executing SQL statements built at runtime.
+
+Query:
+DECLARE
+    c NUMBER;
+BEGIN
+    c := DBMS_SQL.OPEN_CURSOR;
+
+    DBMS_SQL.PARSE(
+        c,
+        'INSERT INTO department VALUES (104,''Marketing'')',
+        DBMS_SQL.NATIVE
+    );
+
+    DBMS_SQL.EXECUTE(c);
+    DBMS_SQL.CLOSE_CURSOR(c);
+END;
+/
+
+🔷 U4-P7 — Insert 5 Records Using DBMS_JOB
+Description:
+
+DBMS_JOB schedules background jobs automatically.
+
+Query:
+DECLARE
+    j NUMBER;
+BEGIN
+    DBMS_JOB.SUBMIT(
+        j,
+        'INSERT INTO student VALUES(1,''Amit'',78);
+         INSERT INTO student VALUES(2,''Ravi'',81);
+         INSERT INTO student VALUES(3,''Kiran'',92);
+         INSERT INTO student VALUES(4,''Meena'',88);
+         INSERT INTO student VALUES(5,''Raju'',74);',
+        SYSDATE
+    );
+    COMMIT;
+END;
+/
+
+🔷 U4-P8 — Recompile Modified Objects
+Query:
+BEGIN
+    DBMS_DDL.ALTER_COMPILE('PROCEDURE','SCOTT','MANAGE_VARRAY');
+    DBMS_DDL.ALTER_COMPILE('PROCEDURE','SCOTT','MANAGE_NESTED');
+END;
+/

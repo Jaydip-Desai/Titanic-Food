@@ -1,0 +1,81 @@
+-- Step 1: Create Object Type
+CREATE OR REPLACE TYPE course_rec AS OBJECT (
+    course_code VARCHAR2(10),
+    course_name VARCHAR2(100)
+);
+/
+
+-- Step 2: Create Nested Table Type
+CREATE OR REPLACE TYPE course_tbl AS TABLE OF course_rec;
+/
+
+-- Step 3: Create Student Table with Nested Table column
+CREATE TABLE STUDENT_COURSE (
+    student_id   NUMBER PRIMARY KEY,
+    student_name VARCHAR2(100),
+    courses      course_tbl
+) 
+NESTED TABLE courses STORE AS courses_nt;
+
+-- Step 4: Insert sample data
+INSERT INTO STUDENT_COURSE VALUES (1, 'Deepak', course_tbl(
+    course_rec('CS101', 'Database Systems'),
+    course_rec('CS102', 'Operating Systems')
+));
+
+INSERT INTO STUDENT_COURSE VALUES (2, 'Ekta', course_tbl(
+    course_rec('CS201', 'Computer Networks')
+));
+
+COMMIT;
+
+-- Step 5: Procedure for managing courses
+CREATE OR REPLACE PROCEDURE manage_student_courses (
+    p_student_id IN NUMBER,
+    p_action     IN VARCHAR2,
+    p_index      IN NUMBER DEFAULT NULL,
+    p_code       IN VARCHAR2 DEFAULT NULL,
+    p_name       IN VARCHAR2 DEFAULT NULL
+) IS
+    v_courses course_tbl;
+BEGIN
+    SELECT courses INTO v_courses 
+    FROM STUDENT_COURSE 
+    WHERE student_id = p_student_id;
+
+    -- INSERT (without EXTEND)
+    IF UPPER(p_action) = 'INSERT' THEN
+        v_courses := v_courses MULTISET UNION course_tbl(course_rec(p_code, p_name));
+        DBMS_OUTPUT.PUT_LINE('Course inserted.');
+
+    -- UPDATE
+    ELSIF UPPER(p_action) = 'UPDATE' THEN
+        IF p_index BETWEEN 1 AND v_courses.COUNT THEN
+            v_courses(p_index) := course_rec(p_code, p_name);
+            DBMS_OUTPUT.PUT_LINE('Course updated.');
+        ELSE
+            DBMS_OUTPUT.PUT_LINE('Invalid index for update.');
+        END IF;
+
+    -- DELETE (without EXTEND)
+    ELSIF UPPER(p_action) = 'DELETE' THEN
+        IF p_index BETWEEN 1 AND v_courses.COUNT THEN
+            v_courses := v_courses MULTISET EXCEPT course_tbl(v_courses(p_index));
+            DBMS_OUTPUT.PUT_LINE('Course deleted.');
+        ELSE
+            DBMS_OUTPUT.PUT_LINE('Invalid index for deletion.');
+        END IF;
+
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('Invalid action.');
+    END IF;
+
+    UPDATE STUDENT_COURSE SET courses = v_courses WHERE student_id = p_student_id;
+END;
+/
+
+
+
+EXEC manage_student_courses(1, 'INSERT', NULL, 'CS103', 'Data Structures');
+EXEC manage_student_courses(2, 'UPDATE', 1, 'CS202', 'Artificial Intelligence');
+EXEC manage_student_courses(1, 'DELETE', 2);

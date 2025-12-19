@@ -1,0 +1,82 @@
+-- Step 1: Create Object & VARRAY
+CREATE OR REPLACE TYPE author_obj AS OBJECT (
+  author_id NUMBER,
+  author_name VARCHAR2(100)
+);
+/
+CREATE OR REPLACE TYPE author_varray IS VARRAY(10) OF author_obj;
+/
+
+-- Step 2: Create Main Table
+CREATE TABLE book_authors_varray (
+  book_id NUMBER PRIMARY KEY,
+  authors author_varray
+);
+/
+
+-- Step 3: Insert Sample Data
+INSERT INTO book_authors_varray
+VALUES (1, author_varray(
+  author_obj(1,'Ankesh'),
+  author_obj(2,'Parth'),
+  author_obj(3,'Jayesh')
+));
+COMMIT;
+
+-- Step 4: Create Function
+CREATE OR REPLACE FUNCTION manage_authors_varray (
+  p_book_id    IN NUMBER,
+  p_action     IN VARCHAR2,   -- 'INSERT', 'UPDATE', 'DELETE'
+  p_position   IN NUMBER DEFAULT NULL,
+  p_author_id  IN NUMBER DEFAULT NULL,
+  p_author_nm  IN VARCHAR2 DEFAULT NULL
+)
+RETURN VARCHAR2
+IS
+  v_authors author_varray;
+BEGIN
+  SELECT authors INTO v_authors
+  FROM book_authors_varray
+  WHERE book_id = p_book_id
+  FOR UPDATE;
+
+  CASE UPPER(p_action)
+    WHEN 'INSERT' THEN
+      v_authors.EXTEND;
+      v_authors(v_authors.LAST) := author_obj(p_author_id, p_author_nm);
+
+    WHEN 'UPDATE' THEN
+      IF p_position BETWEEN 1 AND v_authors.COUNT THEN
+        v_authors(p_position) := author_obj(p_author_id, p_author_nm);
+      ELSE
+        RETURN 'Invalid position for UPDATE';
+      END IF;
+
+    WHEN 'DELETE' THEN
+      IF p_position BETWEEN 1 AND v_authors.COUNT THEN
+        FOR i IN p_position .. v_authors.COUNT - 1 LOOP
+          v_authors(i) := v_authors(i+1);
+        END LOOP;
+        v_authors.TRIM;
+      ELSE
+        RETURN 'Invalid position for DELETE';
+      END IF;
+  END CASE;
+
+  UPDATE book_authors_varray
+  SET authors = v_authors
+  WHERE book_id = p_book_id;
+
+  RETURN 'SUCCESS';
+END;
+/
+-- Step 5: Test the Function
+
+-- Insert new author
+SELECT manage_authors_varray(1, 'INSERT', NULL, 4, 'Jaimin') FROM dual;
+
+-- Update 2nd author
+SELECT manage_authors_varray(1, 'UPDATE', 2, 2, 'Parth Murabiya') FROM dual;
+
+-- Delete 1st author
+SELECT manage_authors_varray(1, 'DELETE', 1) FROM dual;

@@ -1,0 +1,45 @@
+-- Create a VARRAY type of size 10 for numbers
+CREATE OR REPLACE TYPE num_array IS VARRAY(10) OF NUMBER;
+/
+
+CREATE OR REPLACE PROCEDURE manage_varray IS
+    v_arr num_array := num_array();  -- initialize empty VARRAY
+BEGIN
+    -- Insert elements
+    v_arr.EXTEND;         -- increase size
+    v_arr(v_arr.LAST) := 10;
+
+    v_arr.EXTEND;
+    v_arr(v_arr.LAST) := 20;
+
+    v_arr.EXTEND;
+    v_arr(v_arr.LAST) := 30;
+
+    DBMS_OUTPUT.PUT_LINE('After Insert:');
+    FOR i IN 1..v_arr.COUNT LOOP
+        DBMS_OUTPUT.PUT_LINE('Element '||i||' = '||v_arr(i));
+    END LOOP;
+
+    -- Update 2nd element
+    v_arr(2) := 200;
+
+    DBMS_OUTPUT.PUT_LINE('After Update (2nd element changed):');
+    FOR i IN 1..v_arr.COUNT LOOP
+        DBMS_OUTPUT.PUT_LINE('Element '||i||' = '||v_arr(i));
+    END LOOP;
+
+    -- Delete last element
+    v_arr.TRIM;   -- removes last element
+
+    DBMS_OUTPUT.PUT_LINE('After Delete (last element removed):');
+    FOR i IN 1..v_arr.COUNT LOOP
+        DBMS_OUTPUT.PUT_LINE('Element '||i||' = '||v_arr(i));
+    END LOOP;
+
+END;
+/
+
+
+SET SERVEROUTPUT ON;
+EXEC manage_varray;
+

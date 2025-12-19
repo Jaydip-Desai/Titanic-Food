@@ -1,0 +1,222 @@
+Scenario 1 — Simple row lock (blocking another session)
+
+-- Acquire a row lock on stdid = 1
+SELECT * 
+FROM student_master
+WHERE stdid = 1
+FOR UPDATE;
+
+
+-- Try to update the same row (this will wait/pend until Session-1 releases)
+UPDATE student_master
+SET course = 'PhD'
+WHERE stdid = 1;
+-- This statement will hang (wait) until the lock is released
+
+
+SELECT sid, serial#, username, status, machine FROM v$session WHERE username IS NOT NULL;
+
+
+SET LINESIZE 200
+SET PAGESIZE 50
+
+COLUMN "Session ID"        FORMAT 99999
+COLUMN "Serial Number"     FORMAT 999999
+COLUMN "Username"          FORMAT A12
+COLUMN "Lock Type"         FORMAT A5
+COLUMN "Lock Mode"         FORMAT 999
+COLUMN "Request Mode"      FORMAT 999
+COLUMN "Locked Object"     FORMAT A25
+COLUMN "ID1 (Object ID)"   FORMAT 999999999
+COLUMN "ID2 (Sub-object ID)" FORMAT 999999999
+
+
+
+-- Show who holds locks
+-- (replace sid value(s) with the locker SID)
+SELECT 
+    s.sid        AS "Session ID",
+    s.serial#    AS "Serial Number",
+    s.username   AS "Username",
+    l.type       AS "Lock Type",
+    l.lmode      AS "Lock Mode",
+    l.request    AS "Request Mode",
+    o.object_name AS "Locked Object",
+    l.id1        AS "ID1 (Object ID)",
+    l.id2        AS "ID2 (Sub-object ID)"
+FROM 
+    v$session s
+JOIN 
+    v$lock l ON s.sid = l.sid
+LEFT JOIN 
+    dba_objects o ON l.id1 = o.object_id
+WHERE 
+    l.type IN ('TX','TM')
+ORDER BY s.sid;
+
+
+
+SET LINESIZE 200
+SET PAGESIZE 50
+SET WRAP OFF
+
+COLUMN "Session ID"          FORMAT 99999
+COLUMN "Serial Number"       FORMAT 999999
+COLUMN "Username"            FORMAT A12
+COLUMN "Lock Type"           FORMAT A10
+COLUMN "Lock Mode"           FORMAT 999
+COLUMN "Request Mode"        FORMAT 999
+COLUMN "Locked Object"       FORMAT A30
+COLUMN "ID1 (Object ID)"     FORMAT 999999999
+COLUMN "ID2 (Sub-object ID)" FORMAT 999999999
+COLUMN "SQL Text"            FORMAT A80 WORD_WRAPPED
+
+SELECT 
+    s.sid AS "Session ID",
+    s.serial# AS "Serial Number",
+    s.username AS "Username",
+    l.type AS "Lock Type",
+    l.lmode AS "Lock Mode",
+    l.request AS "Request Mode",
+    o.object_name AS "Locked Object",
+    l.id1 AS "ID1 (Object ID)",
+    l.id2 AS "ID2 (Sub-object ID)",
+    q.sql_text AS "SQL Text"
+FROM 
+    v$session s
+JOIN 
+    v$lock l ON s.sid = l.sid
+JOIN 
+    dba_objects o ON l.id1 = o.object_id
+LEFT JOIN 
+    v$sql q ON s.sql_id = q.sql_id
+WHERE 
+    s.sid = 263;
+
+
+
+
+
+COMMIT; -- or ROLLBACK;
+
+
+
+Correct Query to See Locking SQL:
+
+SET LINESIZE 200
+SET PAGESIZE 50
+
+COLUMN "SID" FORMAT 99999
+COLUMN "SERIAL#" FORMAT 999999
+COLUMN "USERNAME" FORMAT A12
+COLUMN "STATUS" FORMAT A10
+COLUMN "SQL Text" FORMAT A80
+
+SELECT 
+    s.sid AS "SID",
+    s.serial# AS "SERIAL#",
+    s.username AS "USERNAME",
+    s.status AS "STATUS",
+    q.sql_text AS "SQL Text"
+FROM 
+    v$session s
+JOIN 
+    v$lock l ON s.sid = l.sid
+LEFT JOIN 
+    v$sql q ON s.prev_sql_id = q.sql_id   -- Use PREV_SQL_ID for the SQL that caused the lock
+WHERE 
+    l.block = 1 OR l.request > 0;
+
+
+
+
+
+
+Scenario 2 — Table lock (LOCK TABLE ... IN EXCLUSIVE MODE)
+
+LOCK TABLE student_master IN EXCLUSIVE MODE;
+
+
+UPDATE student_master SET course = 'MBA' WHERE stdid = 2;
+
+COMMIT; -- or ROLLBACK; -- for Release 
+
+
+
+Scenario 3 — Multiple independent row locks (no conflict)
+
+SELECT * FROM student_master WHERE stdid = 1 FOR UPDATE;
+-- locks row 1
+
+SELECT * FROM student_master WHERE stdid = 2 FOR UPDATE;
+-- locks row 2
+
+
+-- Update row 3 (not locked) — this executes immediately
+UPDATE student_master SET course='Diploma' WHERE stdid = 3;
+COMMIT;
+
+
+
+Scenario 4 — Creating a deadlock (circular wait) — Oracle detects & resolves
+
+Session-1: lock row 1
+SELECT * FROM student_master WHERE stdid = 1 FOR UPDATE;
+
+Session-2: lock row 2
+SELECT * FROM student_master WHERE stdid = 2 FOR UPDATE;
+
+Session-1: now try to update row 2 (will wait)
+UPDATE student_master SET course = 'X' WHERE stdid = 2;
+-- blocked (waiting for lock on row 2 held by Session-2)
+
+
+Session-2: now try to update row 1 (will wait)
+UPDATE student_master SET course = 'Y' WHERE stdid = 1;
+-- Now a circular wait exists:
+-- Session-1 waits for row2, Session-2 waits for row1.
+
+
+SELECT s.sid, s.serial#, s.username, q.sql_text
+FROM v$session s
+LEFT JOIN v$sql q ON s.sql_id = q.sql_id
+WHERE s.sid IN (263);  -- replace with SIDs you saw in v$session
+
+
+
+
+Types of Locks & Modes
+
+From your notes:
+
+Lock Types
+
+TX → Transactional lock (row-level)
+
+TM → Table lock
+
+Lock Modes (LMODE / REQUEST)
+
+0 → None
+
+1 → Null
+
+2 → Row-S (Shared Row Lock)
+
+3 → Row-X (Exclusive Row Lock)
+
+4 → Share Lock
+
+5 → Share Row Exclusive
+
+6 → Exclusive
+
+So when you run FOR UPDATE, you’ll normally see:
+
+TX lock with lmode=6 (row exclusive).
+
+TM lock with lmode=3 (table-level for row update).
+
+
+
+

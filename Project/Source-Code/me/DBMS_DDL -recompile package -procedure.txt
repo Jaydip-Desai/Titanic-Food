@@ -1,0 +1,103 @@
+------------------------------------------------------------
+-- Example 1: EMP Package + Procedure
+------------------------------------------------------------
+
+-- Create Package
+CREATE OR REPLACE PACKAGE emp_pkg IS
+    PROCEDURE show_emp(p_empno NUMBER);
+END emp_pkg;
+/
+
+-- Package Body
+CREATE OR REPLACE PACKAGE BODY emp_pkg IS
+    PROCEDURE show_emp(p_empno NUMBER) IS
+    BEGIN
+        DBMS_OUTPUT.PUT_LINE('Employee no: ' || p_empno);
+    END show_emp;
+END emp_pkg;
+/
+
+-- Check Package
+SELECT object_name, object_type, status
+FROM user_objects
+WHERE object_name = 'EMP_PKG';
+
+-- Recompile Package
+BEGIN
+    DBMS_DDL.ALTER_COMPILE('PACKAGE BODY', 'SYSTEM', 'EMP_PKG');
+END;
+/
+
+-- Create Procedure
+CREATE OR REPLACE PROCEDURE emp_proc AS
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('Employee procedure executed successfully!');
+END emp_proc;
+/
+
+-- Execute Procedure
+SET SERVEROUTPUT ON;
+EXEC emp_proc;
+
+-- Check Procedure
+SELECT object_name, object_type, status
+FROM user_objects
+WHERE object_name = 'EMP_PROC';
+
+-- Recompile Procedure
+BEGIN
+    DBMS_DDL.ALTER_COMPILE('PROCEDURE', 'SYSTEM', 'EMP_PROC');
+END;
+/
+
+------------------------------------------------------------
+-- Example 2: STUDENT Package + Procedure
+------------------------------------------------------------
+
+-- Create Package
+CREATE OR REPLACE PACKAGE student_pkg IS
+    PROCEDURE show_student(p_studid NUMBER);
+END student_pkg;
+/
+
+-- Package Body
+CREATE OR REPLACE PACKAGE BODY student_pkg IS
+    PROCEDURE show_student(p_studid NUMBER) IS
+    BEGIN
+        DBMS_OUTPUT.PUT_LINE('Student ID: ' || p_studid);
+    END show_student;
+END student_pkg;
+/
+
+-- Check Package
+SELECT object_name, object_type, status
+FROM user_objects
+WHERE object_name = 'STUDENT_PKG';
+
+-- Recompile Package
+BEGIN
+    DBMS_DDL.ALTER_COMPILE('PACKAGE BODY', 'SYSTEM', 'STUDENT_PKG');
+END;
+/
+
+-- Create Procedure
+CREATE OR REPLACE PROCEDURE student_proc AS
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('Student procedure executed successfully!');
+END student_proc;
+/
+
+-- Execute Procedure
+SET SERVEROUTPUT ON;
+EXEC student_proc;
+
+-- Check Procedure
+SELECT object_name, object_type, status
+FROM user_objects
+WHERE object_name = 'STUDENT_PROC';
+
+-- Recompile Procedure
+BEGIN
+    DBMS_DDL.ALTER_COMPILE('PROCEDURE', 'MCA36', 'STUDENT_PROC');
+END;
+/

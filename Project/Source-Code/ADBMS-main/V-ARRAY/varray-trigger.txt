@@ -1,0 +1,98 @@
+Manage Authors in VARRAY using Trigger
+Step 1: Create Object & VARRAY
+
+CREATE OR REPLACE TYPE author_obj AS OBJECT (
+  author_id   NUMBER,
+  author_name VARCHAR2(100)
+);
+
+CREATE OR REPLACE TYPE author_varray IS VARRAY(10) OF author_obj;
+
+Step 2: Create Main Table
+
+CREATE TABLE book_authors_varray (
+  book_id NUMBER PRIMARY KEY,
+  authors author_varray
+);
+
+Step 3: Insert Sample Data
+
+INSERT INTO book_authors_varray
+VALUES (1, author_varray(
+  author_obj(1,'Ankesh'),
+  author_obj(2,'Parth'),
+  author_obj(3,'Jayesh')
+));
+COMMIT;
+
+Step 4: Create Action Table
+
+CREATE TABLE author_actions (
+	action_id   NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+	book_id     NUMBER,
+	action_type VARCHAR2(10), 
+	position    NUMBER,
+	author_id   NUMBER,
+	author_name VARCHAR2(100),
+	processed   CHAR(1) DEFAULT 'N'
+);
+
+Step 5: Create Trigger
+
+CREATE OR REPLACE TRIGGER trg_manage_authors_varray
+AFTER INSERT ON author_actions
+FOR EACH ROW
+DECLARE
+  v_authors author_varray;
+BEGIN
+  SELECT authors INTO v_authors
+  FROM book_authors_varray
+  WHERE book_id = :NEW.book_id
+  FOR UPDATE;
+
+  CASE UPPER(:NEW.action_type)
+   WHEN 'INSERT' THE
+      v_authors.EXTEND;
+      v_authors(v_authors.LAST) := author_obj(:NEW.author_id, :NEW.author_name);
+
+    WHEN 'UPDATE' THEN
+      IF :NEW.position BETWEEN 1 AND v_authors.COUNT THEN
+        v_authors(:NEW.position) := author_obj(:NEW.author_id, :NEW.author_name);     
+	END IF;
+
+    WHEN 'DELETE' THEN
+      IF :NEW.position BETWEEN 1 AND v_authors.COUNT THEN
+        FOR i IN :NEW.position .. v_authors.COUNT - 1 LOOP
+          v_authors(i) := v_authors(i+1);
+        END LOOP;
+        v_authors.TRIM;
+      END IF;
+  END CASE;
+
+  UPDATE book_authors_varray
+  SET authors = v_authors
+  WHERE book_id = :NEW.book_id;
+
+  UPDATE author_actions
+  SET processed = 'Y'
+  WHERE action_id = :NEW.action_id;
+END;
+/
+
+
+Step 6: Test the Trigger
+
+-- Add new author
+INSERT INTO author_actions (book_id, action_type, author_id, author_name)
+VALUES (1, 'INSERT', 4, 'Jaimin');
+
+-- Update 2nd author
+INSERT INTO author_actions (book_id, action_type, position, author_id, author_name)
+VALUES (1, 'UPDATE', 2, 2, 'Parth Murabiya');
+
+-- Delete 1st author
+INSERT INTO author_actions (book_id, action_type, position)
+VALUES (1, 'DELETE', 1);
+
+COMMIT;
+

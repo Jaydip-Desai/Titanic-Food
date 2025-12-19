@@ -1,0 +1,108 @@
+Practical-8
+-- Write a procedure to update, delete and insert new element in varray.
+
+-- Step 1: Create VARRAY type
+CREATE OR REPLACE TYPE student_marks AS VARRAY(3) OF NUMBER;
+/
+
+-- Step 2: Create table with VARRAY column
+CREATE TABLE STUDENT (
+    student_id   NUMBER PRIMARY KEY,
+    student_name VARCHAR2(100),
+    marks        student_marks
+) 
+STORAGE (
+    INITIAL 1000        
+    NEXT 100           
+    MINEXTENTS 1       
+    MAXEXTENTS 2 
+);
+
+-- Step 3: Insert sample records
+INSERT INTO STUDENT (student_id, student_name, marks) 
+VALUES (1, 'jaydip', student_marks(85, 90, 78));
+
+INSERT INTO STUDENT (student_id, student_name, marks) 
+VALUES (2, 'yashvi', student_marks(88, 92, 80));
+
+INSERT INTO STUDENT (student_id, student_name, marks) 
+VALUES (3, 'jainil', student_marks(88, 80));
+
+COMMIT;
+
+-- Step 4: Procedure to manage marks (insert, update, delete without gaps)
+CREATE OR REPLACE PROCEDURE manage_marks(
+    sid          IN NUMBER,
+    action       IN VARCHAR2,
+    mark         IN NUMBER,
+    updated_mark IN NUMBER DEFAULT NULL
+) IS
+    current_marks student_marks;
+    new_marks     student_marks := student_marks();
+    found BOOLEAN := FALSE;
+BEGIN
+    -- Fetch existing marks
+    SELECT marks INTO current_marks 
+    FROM STUDENT 
+    WHERE student_id = sid;
+
+    -- Insert
+    IF UPPER(action) = 'INSERT' THEN
+        IF current_marks.COUNT < 3 THEN
+            current_marks.EXTEND;
+            current_marks(current_marks.LAST) := mark;
+            DBMS_OUTPUT.PUT_LINE('Mark inserted.');
+        ELSE
+            DBMS_OUTPUT.PUT_LINE('Cannot insert: maximum marks reached.');
+        END IF;
+
+    -- Update
+    ELSIF UPPER(action) = 'UPDATE' THEN
+        FOR i IN 1..current_marks.COUNT LOOP
+            IF current_marks(i) = mark THEN
+                current_marks(i) := updated_mark;
+                found := TRUE;
+                DBMS_OUTPUT.PUT_LINE('Mark updated.');
+                EXIT;
+            END IF;
+        END LOOP;
+
+        IF NOT found THEN
+            DBMS_OUTPUT.PUT_LINE('Mark not found for update.');
+        END IF;
+
+    -- Delete (rebuild collection → no gaps)
+    ELSIF UPPER(action) = 'DELETE' THEN
+        FOR i IN 1..current_marks.COUNT LOOP
+            IF current_marks(i) != mark THEN
+                new_marks.EXTEND;
+                new_marks(new_marks.COUNT) := current_marks(i);
+            END IF;
+        END LOOP;
+        current_marks := new_marks;
+        DBMS_OUTPUT.PUT_LINE('Mark deleted.');
+
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('Invalid action. Use INSERT, UPDATE, or DELETE.');
+    END IF;
+
+    -- Save back
+    UPDATE STUDENT 
+    SET marks = current_marks 
+    WHERE student_id = sid;
+END;
+/
+
+
+-- Update mark 92 → 95 for student 2
+EXEC manage_marks(2, 'UPDATE', 92, 95);
+
+-- Insert new mark 60 for student 1
+EXEC manage_marks(1, 'INSERT', 60);
+
+-- Delete mark 85 from student 1 (rebuilds collection, no gaps)
+EXEC manage_marks(1, 'DELETE', 85);
+
+
+SELECT student_id, student_name, marks FROM STUDENT;
+

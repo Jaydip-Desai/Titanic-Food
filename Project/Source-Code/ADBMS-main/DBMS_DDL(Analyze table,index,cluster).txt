@@ -1,0 +1,102 @@
+------------------------------------------------------------
+-- 1. CREATE A CLUSTER
+------------------------------------------------------------
+CREATE CLUSTER emp_dept_cluster (
+    deptno NUMBER(5)
+)
+SIZE 1024;
+
+------------------------------------------------------------
+-- 2. CREATE AN INDEX ON THE CLUSTER
+------------------------------------------------------------
+CREATE INDEX emp_dept_cluster_idx
+ON CLUSTER emp_dept_cluster;
+
+------------------------------------------------------------
+-- 3. CREATE TABLES INSIDE THE CLUSTER
+------------------------------------------------------------
+CREATE TABLE department (
+    deptno NUMBER(5) PRIMARY KEY,
+    dname  VARCHAR2(50)
+)
+CLUSTER emp_dept_cluster (deptno);
+
+CREATE TABLE employee (
+    empno   NUMBER(5) PRIMARY KEY,
+    ename   VARCHAR2(50),
+    deptno  NUMBER(5),
+    salary  NUMBER(10,2)
+)
+CLUSTER emp_dept_cluster (deptno);
+
+------------------------------------------------------------
+-- 4. CREATE A NORMAL (NON-CLUSTERED) TABLE
+------------------------------------------------------------
+CREATE TABLE author1 (
+    book_id   NUMBER,
+    author_id NUMBER,
+    title     VARCHAR2(100),
+    price     NUMBER(10,2)
+)
+
+STORAGE (
+    INITIAL     5K
+    NEXT        5K
+    MINEXTENTS  1
+    MAXEXTENTS  5
+);
+
+------------------------------------------------------------
+-- 5. CREATE INDEX ON NORMAL TABLE
+------------------------------------------------------------
+CREATE INDEX author_idx
+ON author1 (author_id);
+
+------------------------------------------------------------
+-- 6. ANALYZE ALL OBJECTS USING DBMS_DDL (NO METHOD PARAMETER)
+------------------------------------------------------------
+BEGIN
+  -- Analyze cluster
+  DBMS_DDL.ANALYZE_OBJECT(
+    type   => 'CLUSTER',
+    schema => 'MCA36',
+    name   => 'EMP_DEPT_CLUSTER',
+    method => 'COMPUTE'
+  );
+
+  -- Analyze tables inside cluster
+  DBMS_DDL.ANALYZE_OBJECT('TABLE', 'MCA36', 'DEPARTMENT', 'COMPUTE');
+  DBMS_DDL.ANALYZE_OBJECT('TABLE', 'MCA36', 'EMPLOYEE', 'COMPUTE');
+
+  -- Analyze cluster index
+  DBMS_DDL.ANALYZE_OBJECT('INDEX', 'MCA36', 'EMP_DEPT_CLUSTER_IDX', 'COMPUTE');
+
+  -- Analyze normal table
+  DBMS_DDL.ANALYZE_OBJECT('TABLE', 'MCA36', 'AUTHOR1', 'COMPUTE');
+
+  -- Analyze normal index
+  DBMS_DDL.ANALYZE_OBJECT('INDEX', 'MCA36', 'AUTHOR_IDX', 'COMPUTE');
+END;
+/
+
+==============================================================================
+CHECK THE TABLE IS ANALYZED OR NOT
+-----------------------------------------------------------------------------
+COLUMN table_name   FORMAT A20
+SELECT table_name, num_rows, blocks, last_analyzed
+FROM user_tables
+WHERE table_name IN ('DEPARTMENT','EMPLOYEE','AUTHOR1');
+-------------------------------------------------------------------------------------
+CHECK THE INDEWX IS ANALYZE OR NOT
+----------------------------------------------------------------------------------------
+SELECT index_name, table_name, distinct_keys, leaf_blocks, last_analyzed
+FROM user_indexes
+WHERE index_name IN ('EMP_DEPT_CLUSTER_IDX','AUTHOR_IDX');
+---------------------------------------------------------------------------------
+CHECK THE CLUSTER IS ANALYZE OR NOT
+----------------------------------------------------------------------------------------
+SELECT table_name, last_analyzed
+FROM user_tab_statistics
+WHERE table_name IN ('DEPARTMENT', 'EMPLOYEE');
+
+

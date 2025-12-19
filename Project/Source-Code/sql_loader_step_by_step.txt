@@ -1,0 +1,109 @@
+SQL*Loader (SQLLDR) Step-by-Step Guide
+==========================================
+
+SQL*Loader is an Oracle utility used to load data from external files (flat files like CSV, TXT)
+into Oracle database tables. You can load large amounts of data quickly and efficiently.
+
+-------------------------------------------
+1. PREPARE YOUR TABLES
+-------------------------------------------
+
+Assume we already have these two tables:
+
+---- Department Table -------
+CREATE TABLE Department (
+    dept_id NUMBER PRIMARY KEY,
+    dept_name VARCHAR2(30)
+) CLUSTER emp_dept_cluster (dept_id);
+
+
+---- Employee Table -------
+CREATE TABLE Employee (
+    emp_id NUMBER PRIMARY KEY,
+    emp_name VARCHAR2(30),
+    dob DATE,
+    doj DATE,
+    dept_id NUMBER,
+    gender VARCHAR2(10),
+    contact VARCHAR2(15),
+    email VARCHAR2(30),
+    CONSTRAINT fk_dept FOREIGN KEY (dept_id) REFERENCES Department(dept_id)
+) CLUSTER emp_dept_cluster (dept_id);
+
+
+-------------------------------------------
+2. CREATE A DATA FILE (.dat or .csv)
+-------------------------------------------
+
+Example: employee_data.dat
+
+Contents of file (comma-separated values):
+------------------------------------------
+1,John,15-JAN-1990,20-FEB-2015,10,Male,9876543210,john@example.com
+2,Asha,10-MAY-1992,01-JUL-2016,20,Female,9876501234,asha@example.com
+3,Raj,22-AUG-1988,10-JAN-2014,10,Male,9988776655,raj@example.com
+
+
+-------------------------------------------
+3. CREATE A CONTROL FILE (.ctl)
+-------------------------------------------
+
+This tells SQL*Loader how to map the data file into database columns.
+
+Example: employee_loader.ctl
+-------------------------------------------
+LOAD DATA
+INFILE 'employee_data.dat'
+INTO TABLE Employee
+FIELDS TERMINATED BY ','
+OPTIONALLY ENCLOSED BY '"'
+(
+  emp_id,
+  emp_name,
+  dob DATE 'DD-MON-YYYY',
+  doj DATE 'DD-MON-YYYY',
+  dept_id,
+  gender,
+  contact,
+  email
+)
+
+
+-------------------------------------------
+4. RUN SQL*LOADER FROM COMMAND PROMPT
+-------------------------------------------
+
+Open **Command Prompt (CMD)** or **Terminal** (NOT SQL*Plus).
+
+Run the following command:
+-------------------------------------------
+sqlldr userid=mca3/password@orcl19 control=employee_loader.ctl log=employee_loader.log bad=employee_loader.bad
+
+Explanation of parameters:
+- userid: Oracle username/password@TNS (here mca3)
+- control: Path of the control file (.ctl)
+- log: File where the loading log will be written
+- bad: File where rejected rows (bad data) will be written
+
+
+-------------------------------------------
+5. VERIFY THE LOADED DATA
+-------------------------------------------
+
+After successful execution, connect to SQL*Plus and check the records:
+
+SQL> SELECT * FROM Employee;
+
+You should see the inserted rows from employee_data.dat.
+
+
+-------------------------------------------
+6. NOTES
+-------------------------------------------
+- Run SQL*Loader in CMD/Terminal, not inside SQL*Plus.
+- Data must match column order unless you specify column names differently.
+- Dates must match the format given in the control file.
+- If some rows are invalid, they will be written in the .bad file for review.
+- You can load into multiple tables by defining multiple INTO TABLE sections in the control file.
+
+This process is useful for bulk data imports in real projects.

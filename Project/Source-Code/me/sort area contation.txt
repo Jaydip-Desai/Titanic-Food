@@ -1,0 +1,42 @@
+
+SELECT a.sid, 
+       b.name, 
+       a.value 
+FROM v$sesstat a, v$statname b 
+WHERE a.statistic# = b.statistic# 
+AND b.name = 'sorts (memory)';
+
+-------------------------------------------------------------------------
+SELECT name, value
+FROM v$sysstat
+WHERE name IN ('sorts (memory)', 'sorts (disk)');
+-------------------------------------------------------------------------
+ SELECT
+       (SELECT VALUE FROM v$sysstat WHERE name = 'sorts (memory)') AS memory_sorts,
+       (SELECT VALUE FROM v$sysstat WHERE name = 'sorts (disk)') AS disk_sorts
+    FROM dual;
+-------------------------------------------------------------------------
+			SORT AREA HIT RATIO
+
+SELECT
+        MEM.VALUE AS sorts_in_memory,
+       DISK.VALUE AS sorts_on_disk,
+       ROUND(
+           (MEM.VALUE / (MEM.VALUE + DISK.VALUE)) * 100,
+           2
+       ) AS sort_hit_ratio_percent
+   FROM
+       (SELECT VALUE FROM v$sysstat WHERE name = 'sorts (memory)') MEM,
+      (SELECT VALUE FROM v$sysstat WHERE name = 'sorts (disk)') DISK;
+============================================================
+ SELECT
+       ROUND(
+           (MEM_SORTS.VALUE /
+           (MEM_SORTS.VALUE + DISK_SORTS.VALUE)) * 100,
+           2
+      ) AS sort_hit_ratio_percent
+    FROM
+        (SELECT VALUE FROM v$sysstat WHERE name = 'sorts (memory)') MEM_SORTS,
+        (SELECT VALUE FROM v$sysstat WHERE name = 'sorts (disk)') DISK_SORTS;
+================================================================================
+ALTER SYSTEM SET SORT_AREA_SIZE = 10M;

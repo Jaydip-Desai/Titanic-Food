@@ -1,0 +1,96 @@
+Practical-1
+-----------
+- Write minimum three query to find out fragmentation in database. 
+- Derive your conclusion for the result of the query.
+
+
+Query 1: Free Space Distribution by Segment Type
+
+SELECT 
+    s.SEGMENT_TYPE,
+    SUM(fs.BLOCKS) AS TOTAL_FREE_BLOCKS
+FROM 
+    DBA_FREE_SPACE fs
+JOIN 
+    DBA_SEGMENTS s ON fs.TABLESPACE_NAME = s.TABLESPACE_NAME
+GROUP BY 
+    s.SEGMENT_TYPE;
+
+
+Query 2: Largest Free Blocks per Tablespace
+
+SELECT 
+    fs.TABLESPACE_NAME,
+    MAX(fs.BLOCKS) AS LARGEST_FREE_BLOCKS
+FROM 
+    DBA_FREE_SPACE fs
+GROUP BY 
+    fs.TABLESPACE_NAME;
+
+
+Query 3: Segments with Insufficient Free Space
+
+SELECT 
+    '********FREE********',
+    TABLESPACE_NAME,
+    BLOCK_ID,
+    BLOCKS
+FROM 
+    DBA_FREE_SPACE
+WHERE 
+    TABLESPACE_NAME = 'STUD'
+UNION
+SELECT 
+    '****USED****',
+    TABLESPACE_NAME,
+    BLOCK_ID,
+    BLOCKS
+FROM 
+    DBA_EXTENTS 
+WHERE 
+    TABLESPACE_NAME = 'STUD';
+
+
+
+
+
+
+
+CREATE TABLESPACE stud 
+DATAFILE 'stud01.dbf' SIZE 20M 
+AUTOEXTEND ON NEXT 5M MAXSIZE 100M;
+
+
+
+
+1. Free Space Distribution by Segment Type: Summarizes the total free blocks available, grouped by segment type (e.g., tables, indexes).
+2. Largest Free Blocks per Tablespace: Identifies the largest contiguous free blocks available in each tablespace.
+3. Segments with Insufficient Free Space: Lists segments that have less free space than the number of blocks they occupy, indicating potential fragmentation.
+
+
+
+
+
+Show all tablespaces in your database:
+SELECT TABLESPACE_NAME 
+FROM DBA_TABLESPACES;
+
+
+SELECT TABLESPACE_NAME 
+FROM USER_TABLESPACES;
+
+
+Check tablespaces with their datafiles:
+SELECT TABLESPACE_NAME, FILE_NAME, BYTES/1024/1024 AS SIZE_MB
+FROM DBA_DATA_FILES;
+
+
+Show free space in each tablespace:
+SELECT TABLESPACE_NAME, SUM(BYTES)/1024/1024 AS FREE_MB
+FROM DBA_FREE_SPACE
+GROUP BY TABLESPACE_NAME;
+
+
+
+
+

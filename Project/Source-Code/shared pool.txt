@@ -1,0 +1,45 @@
+SHARED POOL HIT RATIO
+===============================================================================
+SELECT 
+    ROUND((SUM(gethits) / SUM(gets)) * 100, 2) AS "Shared Pool Get Hit Ratio (%)",
+    ROUND((SUM(pinhits) / SUM(pins)) * 100, 2) AS "Shared Pool Pin Hit Ratio (%)"
+FROM v$librarycache;
+
+-------------------------------------------------
+SELECT 
+    ROUND((SUM(requests) - SUM(request_misses)) / SUM(requests) * 100, 2) 
+        AS "Shared Pool Hit Ratio (%)"
+FROM v$shared_pool_reserved;
+
+
+===============================================================================
+[HOW IT WILL WORK]
+
+It checks the Library Cache (part of Shared Pool) to see if the statement or object is already in memory.
+	If found → Cache Hit (no parsing needed)
+	If not found → Miss → Oracle has to parse or load the object again (slower).
+================================================================================
+[EXAMPLE]
+
+Gets = 2000
+Get Misses = 100
+Pins = 500
+Pin Misses = 25
+
+Get Hit Ratio (%) = (Gets - Get Misses) / Gets * 100
+Get Hit Ratio (%) = (2000 - 100) / 2000 * 100 = 95%
+
+Pin Hit Ratio (%) = (Pins - Pin Misses) / Pins * 100
+Pin Hit Ratio (%) = (500 - 25) / 500 * 100 = 95%
+==========================================================================
+[CONCLUSION]
+
+Hit Ratio 90–99% → Most of the time, Oracle finds objects in memory 
+	→ Fast execution.
+Hit Ratio below 90% → Oracle often reparses or reloads objects 
+	→ Slower execution.
+==========================================================================
+[HOW TO RESOLVE THIS PROBLEM]
+
+Increase SHARED_POOL_SIZE.
+Reduce unnecessary PL/SQL or SQL compilations.

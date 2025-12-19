@@ -1,0 +1,86 @@
+-- Manage Authors in Nested Table using Trigger
+
+-- Step 1: Create Object & Nested Table Type
+CREATE OR REPLACE TYPE author_obj AS OBJECT (
+  author_id NUMBER,
+  author_name VARCHAR2(100)
+);
+/
+CREATE OR REPLACE TYPE author_nested IS TABLE OF author_obj;
+/
+
+-- Step 2: Create Main Table with Nested Table Column
+CREATE TABLE book_authors_nested (
+  book_id NUMBER PRIMARY KEY,
+  authors author_nested
+) NESTED TABLE authors STORE AS authors_store;
+/
+
+-- Step 3: Insert Sample Data
+INSERT INTO book_authors_nested
+VALUES (1, author_nested(
+  author_obj(1,'Ankesh'),
+  author_obj(2,'Parth'),
+  author_obj(3,'Jayesh')
+));
+COMMIT;
+
+-- Step 4: Create Action Table
+CREATE TABLE author_actions (
+  action_id NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  book_id NUMBER,
+  action_type VARCHAR2(10), -- INSERT / UPDATE / DELETE
+  position NUMBER,
+  author_id NUMBER,
+  author_name VARCHAR2(100),
+  processed CHAR(1) DEFAULT 'N'
+);
+/
+
+-- Step 5: Create Trigger
+CREATE OR REPLACE TRIGGER trg_manage_authors_nested
+AFTER INSERT ON author_actions
+FOR EACH ROW
+DECLARE
+  v_authors author_nested;
+BEGIN
+  SELECT authors INTO v_authors FROM book_authors_nested
+  WHERE book_id = :NEW.book_id FOR UPDATE;
+
+  CASE UPPER(:NEW.action_type)
+    WHEN 'INSERT' THEN
+      v_authors.EXTEND;
+      v_authors(v_authors.LAST) := author_obj(:NEW.author_id, :NEW.author_name);
+
+    WHEN 'UPDATE' THEN
+      IF :NEW.position BETWEEN 1 AND v_authors.COUNT THEN
+        v_authors(:NEW.position) := author_obj(:NEW.author_id, :NEW.author_name);
+      END IF;
+
+    WHEN 'DELETE' THEN
+      IF :NEW.position BETWEEN 1 AND v_authors.COUNT THEN
+        v_authors.DELETE(:NEW.position);
+      END IF;
+  END CASE;
+
+  UPDATE book_authors_nested
+  SET authors = v_authors
+  WHERE book_id = :NEW.book_id;
+
+  UPDATE author_actions
+  SET processed = 'Y'
+  WHERE action_id = :NEW.action_id;
+END;
+/
+ 
+-- Step 6: Test the Trigger
+INSERT INTO author_actions (book_id, action_type, author_id, author_name)
+VALUES (1, 'INSERT', 4, 'Jaimin');
+
+INSERT INTO author_actions (book_id, action_type, position, author_id, author_name)
+VALUES (1, 'UPDATE', 2, 2, 'Parth Murabiya');
+
+INSERT INTO author_actions (book_id, action_type, position)
+VALUES (1, 'DELETE', 1);
+
+COMMIT;

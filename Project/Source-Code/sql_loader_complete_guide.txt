@@ -1,0 +1,109 @@
+
+==============================
+SQL*Loader Step by Step Example
+==============================
+
+This guide shows how to use SQL*Loader with your Department and Employee tables.
+
+----------------------------------------------------
+1. Create the CLUSTER and Tables in SQL*Plus (or SQL Developer)
+----------------------------------------------------
+
+-- First, create the cluster
+CREATE CLUSTER emp_dept_cluster (dept_id NUMBER)
+SIZE 1024;
+
+-- Create Department table in the cluster
+CREATE TABLE Department (
+    dept_id NUMBER PRIMARY KEY,
+    dept_name VARCHAR2(30)
+) CLUSTER emp_dept_cluster (dept_id);
+
+-- Create Employee table in the cluster
+CREATE TABLE Employee (
+    emp_id NUMBER PRIMARY KEY,
+    emp_name VARCHAR2(30),
+    dob DATE,
+    doj DATE,
+    dept_id NUMBER,
+    gender VARCHAR2(10),
+    contact VARCHAR2(15),
+    email VARCHAR2(30),
+    CONSTRAINT fk_dept FOREIGN KEY (dept_id) REFERENCES Department(dept_id)
+) CLUSTER emp_dept_cluster (dept_id);
+
+
+----------------------------------------------------
+2. Prepare Data Files (.dat)
+----------------------------------------------------
+
+-- department.dat
+1,HR
+2,Finance
+3,IT
+4,Sales
+
+-- employee.dat
+101,John,15-SEP-1990,01-JAN-2020,1,Male,9876543210,john@example.com
+102,Alice,20-JUN-1992,15-FEB-2021,2,Female,9123456780,alice@example.com
+103,Ravi,10-MAR-1988,10-MAR-2018,3,Male,9988776655,ravi@example.com
+104,Neha,25-DEC-1995,05-MAY-2022,4,Female,9876501234,neha@example.com
+
+
+----------------------------------------------------
+3. Prepare Control Files (.ctl)
+----------------------------------------------------
+
+-- department.ctl
+LOAD DATA
+INFILE 'department.dat'
+INTO TABLE Department
+FIELDS TERMINATED BY ','
+(dept_id, dept_name)
+
+-- employee.ctl
+LOAD DATA
+INFILE 'employee.dat'
+INTO TABLE Employee
+FIELDS TERMINATED BY ','
+(emp_id,
+ emp_name,
+ dob DATE "DD-MON-YYYY",
+ doj DATE "DD-MON-YYYY",
+ dept_id,
+ gender,
+ contact,
+ email)
+
+
+----------------------------------------------------
+4. Run SQL*Loader from Command Prompt
+----------------------------------------------------
+
+-- Open CMD (Windows) or Terminal (Linux).
+-- Use the following commands (replace username/password with your DB credentials):
+
+sqlldr userid=mca3/oracle@orcl19 control=department.ctl log=department.log bad=department.bad
+
+sqlldr userid=mca3/oracle@orcl19 control=employee.ctl log=employee.log bad=employee.bad
+
+
+----------------------------------------------------
+5. Verify Data in SQL*Plus
+----------------------------------------------------
+
+-- After successful load, check records:
+SELECT * FROM Department;
+SELECT * FROM Employee;
+
+
+----------------------------------------------------
+6. Explanation
+----------------------------------------------------
+
+- .dat file  : Contains raw data to be loaded.
+- .ctl file  : Control file tells SQL*Loader how to read data and map it into table columns.
+- .log file  : Stores details of the load process (success/failure).
+- .bad file  : Stores rejected records that failed to load.
+
+This is the complete end-to-end process of SQL*Loader.

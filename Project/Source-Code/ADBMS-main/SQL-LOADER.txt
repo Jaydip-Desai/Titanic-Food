@@ -1,0 +1,21 @@
+ sqlldr mca36/mca36@orcl control=C:\Users\OneDrive\Desktop\new_products.ctl.txt log=new_products.log bad=new_products.bad
+
+-------------------------------------. .ctl ------------file
+LOAD DATA
+INFILE 'C:\Users\OneDrive\Desktop\new_products.csv'
+INTO TABLE NEW_PRODUCTS
+FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '"'
+TRAILING NULLCOLS
+(
+    PRODUCT_ID,
+    PRODUCT_NAME,
+    CATEGORY_ID,
+    UNIT_PRICE
+)
+
+-----------------------make .csv-------------------
+101,Pen,1,12.50
+102,Notebook,1,35.00
+103,Pencil,1,5.00
+104,Eraser,1,2.50
+105,Marker,2,20.00

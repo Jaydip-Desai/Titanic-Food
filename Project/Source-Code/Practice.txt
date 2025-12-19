@@ -1,0 +1,186 @@
+	p-3
+-------------------------------------
+
+SELECT
+    NAME,GETS,MISSES,IMMEDIATE_GETS,IMMEDIATE_MISSES
+FROM
+    v$latch
+WHERE
+    name LIKE 'redo copy'
+    OR name LIKE '%library cache%'
+    OR name LIKE 'redo allocation'
+    OR name LIKE 'cache buffers lru chain';
+
+
+****** Library Cache ******
+
+SELECT 
+    NAME,GETS,MISSES,IMMEDIATE_GETS,IMMEDIATE_MISSES
+FROM 
+    V$LATCH
+WHERE 
+    NAME LIKE '%library cache%';
+
+--->
+- Prevents creation of new SQL statements for same query structure.(Use bind variables)
+- Ensures more SQL statements and objects remain cached.(Increase SHARED_POOL_SIZE)
+- Keeps frequently executed cursors cached in memory.(Use SESSION_CACHED_CURSORS)
+- Avoid dynamic SQL and frequent cursor invalidations.
+
+
+
+****** Cache Buffers LRU Chain Latch ******
+
+SELECT 
+    NAME,GETS,MISSES,IMMEDIATE_GETS,IMMEDIATE_MISSES
+FROM 
+    V$LATCH
+WHERE 
+    NAME LIKE 'cache buffers lru chain';
+
+--->
+- Provides more buffers → reduces contention.(Increase DB_CACHE_SIZE)
+- Avoid unnecessary full table scans
+- Distribute hot objects across different tablespaces or disks.
+
+
+
+
+
+p-4
+
+SELECT 
+    name,GETS,MISSES,IMMEDIATE_GETS,IMMEDIATE_MISSES,
+ROUND((gets / (gets + misses)) * 100, 2) AS "Hit Ratio (%)"
+FROM 
+    v$latch
+WHERE 
+    name LIKE '%lru%';
+
+
+
+
+
+p-5
+
+
+SELECT 
+    ROUND( (1 - (SUM(reloads) / SUM(pins))) * 100, 2 ) AS "Library Cache Hit Ratio (%)"
+FROM 
+    v$librarycache;
+
+
+
+
+SELECT 
+    ROUND( (1 - (a.value / b.value)) * 100, 2 ) AS "Redo Log Buffer Hit Ratio (%)"
+FROM 
+    v$sysstat a,
+    v$sysstat b
+WHERE 
+    a.name = 'redo buffer allocation retries'
+    AND b.name = 'redo entries';
+
+
+
+
+----------------------------------
+
+EXPLAIN PLAN
+  SET STATEMENT_ID = '104' FOR
+  SELECT * FROM department;
+
+
+SET LINESIZE 150
+SET PAGESIZE 200
+
+COLUMN statement_id FORMAT 999 HEADING "Id"
+COLUMN operation FORMAT A25 HEADING "Operation"
+COLUMN name FORMAT A15 HEADING "Name"
+COLUMN rows FORMAT 9999 HEADING "Rows"
+COLUMN bytes FORMAT 9999 HEADING "Bytes"
+COLUMN "Cost (%CPU)" FORMAT A10
+COLUMN time FORMAT A10 HEADING "Time"
+
+SELECT
+    statement_id,
+    LPAD(' ', 2 * depth) || operation AS operation,
+    NVL(object_name, ' ') AS name,
+    NVL(cardinality, 0) AS "Rows",
+    NVL(bytes, 0) AS bytes,
+    cost || ' (0)' AS "Cost %CPU",
+    '00:00:01' AS "Time"
+FROM
+    plan_table
+WHERE
+    statement_id = '104'
+ORDER BY
+    id;
+
+
+
+SELECT *
+FROM TABLE(DBMS_XPLAN.DISPLAY(NULL, '104'));
+
+
+
+
+
+
+
+
+
+
+
+-------------------------------
+
+
+
+
+SELECT
+    name,
+    value
+FROM
+    v$sysstat
+WHERE
+    name IN ('sorts (memory)', 'sorts (disk)');
+
+
+
+SELECT
+    sorts_memory,
+    sorts_disk,
+    (sorts_memory + sorts_disk) AS total_sorts,
+    ROUND((sorts_memory / (sorts_memory + sorts_disk)) * 100, 2) AS sort_memory_hit_ratio_percent
+FROM
+(
+    SELECT
+        MAX(CASE WHEN name = 'sorts (memory)' THEN value ELSE 0 END) AS sorts_memory,
+        MAX(CASE WHEN name = 'sorts (disk)' THEN value ELSE 0 END) AS sorts_disk
+    FROM
+        v$sysstat
+    WHERE
+        name IN ('sorts (memory)', 'sorts (disk)')
+);
+
+
+
+
+
+
+
+
+
+
+
+
+
+u-4 p-4
+
+
+sqlldr userid=system/system control=dept1.ctl log=dept1.log bad=dept1.bad
+
+sqlldr userid=system/system control=emp1.ctl log=emp1.log bad=emp1.bad
+
+
+

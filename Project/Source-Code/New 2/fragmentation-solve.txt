@@ -1,0 +1,60 @@
+CREATE TABLE emp_frag (
+    emp_id     NUMBER PRIMARY KEY,
+    emp_name   VARCHAR2(50),
+    emp_addr   VARCHAR2(4000)
+)
+TABLESPACE USERS
+STORAGE (
+    INITIAL 64K
+    NEXT 64K
+    PCTINCREASE 0
+);
+
+INSERT INTO emp_frag VALUES (1, 'Ankesh', 'Delhi');
+INSERT INTO emp_frag VALUES (2, 'Ram', 'Mumbai');
+INSERT INTO emp_frag VALUES (3, 'Sita', 'Pune');
+INSERT INTO emp_frag VALUES (4, 'Jayesh', 'Chennai');
+COMMIT;
+
+UPDATE emp_frag
+SET emp_addr = RPAD('X', 2900, 'X')
+WHERE emp_id = 1;
+
+UPDATE emp_frag
+SET emp_addr = RPAD('Y', 2900, 'Y')
+WHERE emp_id = 2;
+
+UPDATE emp_frag
+SET emp_addr = RPAD('Z', 2900, 'Z')
+WHERE emp_id = 3;
+
+COMMIT;
+
+ANALYZE TABLE emp_frag LIST CHAINED ROWS INTO chained_rows;
+
+SELECT owner_name, table_name, head_rowid
+FROM chained_rows
+WHERE table_name = 'EMP_FRAG';
+
+-----------------------------------------------for remove fregmentation----------------
+
+
+CREATE TABLE emp_frag_dummy AS SELECT * FROM emp_frag WHERE 1=0;
+
+
+INSERT INTO emp_frag_dummy
+SELECT *
+FROM emp_frag
+WHERE ROWID IN (SELECT head_rowid FROM chained_rows WHERE table_name='EMP_FRAG');
+
+
+DELETE FROM emp_frag
+WHERE ROWID IN (SELECT head_rowid FROM chained_rows WHERE table_name='EMP_FRAG');
+
+
+INSERT INTO emp_frag
+SELECT * FROM emp_frag_dummy;
+
+
+
+TRUNCATE TABLE chained_rows;

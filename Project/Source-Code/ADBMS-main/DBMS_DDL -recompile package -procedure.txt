@@ -1,0 +1,129 @@
+===========================================================================
+-- STEP 1: CREATE PACKAGE SPEC
+------------------------------------------------------------------------
+CREATE OR REPLACE PACKAGE emp_pkg IS
+    -- Procedure with one parameter
+    PROCEDURE show_emp(p_empno NUMBER);
+END emp_pkg;
+/
+===========================================================================
+-- STEP 2: CREATE PACKAGE BODY
+------------------------------------------------------------------------
+CREATE OR REPLACE PACKAGE BODY emp_pkg IS
+    PROCEDURE show_emp(p_empno NUMBER) IS
+    BEGIN
+        DBMS_OUTPUT.PUT_LINE('Employee no: ' || p_empno);
+    END;
+END emp_pkg;
+/
+===========================================================================
+-- STEP 3: CHECK PACKAGE STATUS (SPEC + BODY)
+------------------------------------------------------------------------
+SELECT object_name, object_type, status
+FROM user_objects
+WHERE object_name = 'EMP_PKG';
+===========================================================================
+-- STEP 4: RECOMPILE PACKAGE SPEC AND BODY
+------------------------------------------------------------------------
+BEGIN
+    DBMS_DDL.ALTER_COMPILE('PACKAGE', 'MCA36', 'EMP_PKG');      -- Recompile spec
+    DBMS_DDL.ALTER_COMPILE('PACKAGE BODY', 'MCA36', 'EMP_PKG'); -- Recompile body
+END;
+/
+===========================================================================
+-- STEP 5: INVALIDATE PACKAGE (BREAK THE BODY)
+-- Add an extra parameter to spec so body becomes INVALID
+------------------------------------------------------------------------
+CREATE OR REPLACE PACKAGE emp_pkg IS
+    PROCEDURE show_emp(p_empno NUMBER, p_dummy NUMBER);  -- changed
+END emp_pkg;
+/
+===========================================================================
+-- STEP 6: CHECK STATUS AGAIN (BODY SHOULD BE INVALID)
+------------------------------------------------------------------------
+SELECT object_name, object_type, status
+FROM user_objects
+WHERE object_name = 'EMP_PKG';
+===========================================================================
+-- STEP 7: FIX PACKAGE BODY TO MATCH NEW SPEC
+------------------------------------------------------------------------
+CREATE OR REPLACE PACKAGE BODY emp_pkg IS
+    PROCEDURE show_emp(p_empno NUMBER, p_dummy NUMBER) IS
+    BEGIN
+        DBMS_OUTPUT.PUT_LINE('Employee no: ' || p_empno);
+    END;
+END emp_pkg;
+/
+===========================================================================
+-- STEP 8: RECOMPILE FIXED BODY
+------------------------------------------------------------------------
+BEGIN
+    DBMS_DDL.ALTER_COMPILE('PACKAGE BODY', 'MCA36', 'EMP_PKG');
+END;
+/
+===========================================================================
+-- STEP 9: FINAL CHECK (SPEC + BODY SHOULD BE VALID)
+------------------------------------------------------------------------
+SELECT object_name, object_type, status
+FROM user_objects
+WHERE object_name = 'EMP_PKG';
+===========================================================================
+
+
+
+===========================================================================
+-- STEP 1: CREATE PROCEDURE
+------------------------------------------------------------------------
+CREATE OR REPLACE PROCEDURE emp_proc AS
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('Employee procedure executed successfully!');
+END;
+/
+===========================================================================
+-- STEP 2: EXECUTE PROCEDURE
+------------------------------------------------------------------------
+EXEC emp_proc;
+===========================================================================
+-- STEP 3: CHECK PROCEDURE STATUS
+------------------------------------------------------------------------
+SELECT object_name, object_type, status
+FROM user_objects
+WHERE object_name = 'EMP_PROC';
+===========================================================================
+-- STEP 4: INVALIDATE PROCEDURE BY INTRODUCING ERROR
+------------------------------------------------------------------------
+CREATE OR REPLACE PROCEDURE emp_proc AS
+BEGIN
+    x := 10;  -- ERROR: x is undefined → INVALID
+END;
+/
+===========================================================================
+-- STEP 5: CHECK STATUS (SHOULD BE INVALID)
+------------------------------------------------------------------------
+SELECT object_name, object_type, status
+FROM user_objects
+WHERE object_name = 'EMP_PROC';
+===========================================================================
+-- STEP 6: FIX PROCEDURE
+------------------------------------------------------------------------
+CREATE OR REPLACE PROCEDURE emp_proc AS
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('Employee procedure executed successfully!');
+END;
+/
+===========================================================================
+-- STEP 7: RECOMPILE PROCEDURE
+------------------------------------------------------------------------
+BEGIN
+    DBMS_DDL.ALTER_COMPILE('PROCEDURE', 'MCA36', 'EMP_PROC');
+END;
+/
+===========================================================================
+-- STEP 8: FINAL STATUS CHECK (SHOULD BE VALID)
+------------------------------------------------------------------------
+SELECT object_name, object_type, status
+FROM user_objects
+WHERE object_name = 'EMP_PROC';
+
+
+

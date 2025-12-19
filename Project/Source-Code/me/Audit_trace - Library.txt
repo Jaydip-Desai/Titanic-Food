@@ -1,0 +1,152 @@
+-- =========================================================
+-- PROJECT   : LIBRARY BOOK AUDIT SYSTEM
+-- SUBJECT   : DBMS / Oracle SQL
+-- LEVEL     : College (MCA / BCA)
+-- FEATURES  : Trigger + Procedure + Audit Report
+-- =========================================================
+
+-- =========================
+-- STEP 1: SQL*PLUS SETTINGS
+-- =========================
+SET LINESIZE 220
+SET PAGESIZE 50
+SET WRAP OFF
+SET COLSEP ' | '
+
+COLUMN book_id     FORMAT 999
+COLUMN book_nm     FORMAT A12
+COLUMN operation   FORMAT A8
+COLUMN column_name FORMAT A10
+COLUMN old_value   FORMAT A10
+COLUMN new_value   FORMAT A10
+COLUMN action_dt   FORMAT A19
+
+PROMPT ======================================
+PROMPT STEP 1: CREATE AUDIT TABLE
+PROMPT ======================================
+
+-- =========================
+-- STEP 2: AUDIT TABLE
+-- =========================
+DROP TABLE library_audit PURGE;
+
+CREATE TABLE library_audit (
+    book_id     NUMBER,
+    book_nm     VARCHAR2(30),
+    operation   VARCHAR2(10),
+    column_name VARCHAR2(20),
+    old_value   VARCHAR2(50),
+    new_value   VARCHAR2(50),
+    action_dt   TIMESTAMP
+);
+
+PROMPT ======================================
+PROMPT STEP 2: CREATE MAIN TABLE
+PROMPT ======================================
+
+-- =========================
+-- STEP 3: MAIN TABLE
+-- =========================
+DROP TABLE library_book PURGE;
+
+CREATE TABLE library_book (
+    book_id NUMBER PRIMARY KEY,
+    book_nm VARCHAR2(30),
+    author  VARCHAR2(30),
+    price   NUMBER
+);
+
+PROMPT ======================================
+PROMPT STEP 3: CREATE AUDIT TRIGGER
+PROMPT ======================================
+
+-- =========================
+-- STEP 4: TRIGGER
+-- =========================
+CREATE OR REPLACE TRIGGER trg_library_audit
+AFTER INSERT OR UPDATE OR DELETE
+ON library_book
+FOR EACH ROW
+BEGIN
+    -- INSERT AUDIT
+    IF INSERTING THEN
+        INSERT INTO library_audit
+        VALUES (:NEW.book_id, :NEW.book_nm,
+                'INSERT', '-', '-', '-', SYSTIMESTAMP);
+
+    -- UPDATE AUDIT (PRICE COLUMN)
+    ELSIF UPDATING THEN
+        IF :OLD.price <> :NEW.price THEN
+            INSERT INTO library_audit
+            VALUES (:NEW.book_id, :NEW.book_nm,
+                    'UPDATE', 'PRICE',
+                    :OLD.price, :NEW.price, SYSTIMESTAMP);
+        END IF;
+
+    -- DELETE AUDIT
+    ELSIF DELETING THEN
+        INSERT INTO library_audit
+        VALUES (:OLD.book_id, :OLD.book_nm,
+                'DELETE', '-', '-', '-', SYSTIMESTAMP);
+    END IF;
+END;
+/
+SHOW ERRORS
+
+PROMPT ======================================
+PROMPT STEP 4: CREATE PROCEDURE
+PROMPT ======================================
+
+-- =========================
+-- STEP 5: PROCEDURE
+-- =========================
+CREATE OR REPLACE PROCEDURE add_library_book (
+    p_book_id IN NUMBER,
+    p_book_nm IN VARCHAR2,
+    p_author  IN VARCHAR2,
+    p_price   IN NUMBER
+)
+AS
+BEGIN
+    INSERT INTO library_book
+    VALUES (p_book_id, p_book_nm, p_author, p_price);
+
+    COMMIT;
+END;
+/
+SHOW ERRORS
+
+PROMPT ======================================
+PROMPT STEP 5: DEMO OPERATIONS
+PROMPT ======================================
+
+-- =========================
+-- STEP 6: DEMO DATA
+-- =========================
+EXEC add_library_book(101, 'DBMS', 'Navathe', 450);
+
+UPDATE library_book
+SET price = 500
+WHERE book_id = 101;
+
+DELETE FROM library_book
+WHERE book_id = 101;
+
+COMMIT;
+
+PROMPT ======================================
+PROMPT STEP 6: FORMATTED AUDIT REPORT
+PROMPT ======================================
+
+-- =========================
+-- STEP 7: AUDIT OUTPUT
+-- =========================
+SELECT
+    book_id,
+    book_nm,
+    operation,
+    column_name,
+    old_value,
+    new_value,
+    TO_CHAR(action_dt,'DD-MM-YYYY HH24:MI:SS') AS action_dt
+FROM library_audit;

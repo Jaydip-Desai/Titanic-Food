@@ -1,0 +1,60 @@
+CREATE TABLE product (
+    product_id   NUMBER,
+    product_name VARCHAR2(50),
+    price        NUMBER(10,2)
+)
+STORAGE (initial 1k next 1k minextents 1 maxextents 5);
+
+
+INSERT INTO product VALUES (1, 'Mobile', 12000);
+INSERT INTO product VALUES (2, 'Laptop', 55000);
+INSERT INTO product VALUES (3, 'Tablet', 18000);
+COMMIT;
+
+-------------------------------------------------------------------------------------
+SET SERVEROUTPUT ON;
+
+DECLARE
+    v_cursor_id   NUMBER;          -- Cursor handle
+    v_query       VARCHAR2(200);   -- Dynamic SQL query
+    v_product_id  NUMBER;          -- Output variable
+    v_product_name VARCHAR2(50);   -- Output variable
+    v_status      NUMBER;          -- Execution status
+BEGIN
+    -- Step 1: Build SQL query dynamically
+    v_query := 'SELECT product_id, product_name FROM product WHERE price > :p_price';
+
+    -- Step 2: Open cursor
+    v_cursor_id := DBMS_SQL.OPEN_CURSOR;
+
+    -- Step 3: Parse query
+    DBMS_SQL.PARSE(v_cursor_id, v_query, DBMS_SQL.NATIVE);
+
+    -- Step 4: Bind variable
+    DBMS_SQL.BIND_VARIABLE(v_cursor_id, ':p_price', 15000);
+
+    -- Step 5: Define columns
+    DBMS_SQL.DEFINE_COLUMN(v_cursor_id, 1, v_product_id);
+    DBMS_SQL.DEFINE_COLUMN(v_cursor_id, 2, v_product_name, 50);
+
+    -- Step 6: Execute
+    v_status := DBMS_SQL.EXECUTE(v_cursor_id);
+
+    -- Step 7: Fetch results
+    LOOP
+        EXIT WHEN DBMS_SQL.FETCH_ROWS(v_cursor_id) = 0;
+
+        DBMS_SQL.COLUMN_VALUE(v_cursor_id, 1, v_product_id);
+        DBMS_SQL.COLUMN_VALUE(v_cursor_id, 2, v_product_name);
+
+        DBMS_OUTPUT.PUT_LINE(
+            'Product ID: ' || v_product_id || 
+            ' | Name: ' || v_product_name
+        );
+    END LOOP;
+
+    -- Step 8: Close cursor
+    DBMS_SQL.CLOSE_CURSOR(v_cursor_id);
+
+END;
+/

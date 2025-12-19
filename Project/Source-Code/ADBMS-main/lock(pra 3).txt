@@ -1,0 +1,96 @@
+step:1
+
+CREATE TABLE student (
+    student_id   NUMBER(5),    
+    first_name   VARCHAR2(50),
+    last_name    VARCHAR2(50),
+    dob          DATE,
+    course       VARCHAR2(100)
+);
+
+
+step:2  ---->inser record:-
+
+
+SQL> INSERT INTO student (student_id, first_name, last_name, dob, course)
+  2  VALUES (1, 'Jayesh', 'Vaja', TO_DATE('15-08-2002', 'DD-MM-YYYY'), 'MCA');
+
+1 row created.
+
+SQL>
+SQL> INSERT INTO student (student_id, first_name, last_name, dob, course)
+  2  VALUES (2, 'Ankesh', 'Raval', TO_DATE('10-12-2001', 'DD-MM-YYYY'), 'MBA');
+
+1 row created.
+
+
+--->update query(lock lagyu because commit or roolback nai aapyu)
+
+ update student set first_name='Rakesh' where student_id=1;
+
+1 row updated.
+
+
+_____________________________________________
+----->(2nd)then go to secound sql :-
+
+every time it will be change check mca48(your id)
+________________________________________________
+----->1st file:-
+
+
+SQL> set linesize 200;
+==================================================
+COLUMN username  FORMAT A15;
+==================================================
+SQL> SELECT s.sid,
+           s.serial#,
+           s.username,
+           l.type,
+           l.lmode,
+           l.request,
+           l.id1,
+           l.id2
+      FROM v$session s, v$lock l
+    WHERE s.sid = l.sid
+      AND s.sid = 26;
+
+
+-----------for update in second sql----------------------
+update student set first_name='aaaaaaaaaaa' where student_id=1;
+-------------------------------------------------------------------
+
+
+
+then after
+----------
+commit; 
+---------
+in first sql tab 
+
+
+
+---------------------------------------------------------------------
+update in second sql tab
+------------------------------------
+update student set first_name='aaaaaaaaaaa' where student_id=1;
+
+
+
+
+
+
+0 → None
+
+1 → Null
+
+2 → Row-S (SS) (row share)
+
+3 → Row-X (SX) (row exclusive)
+
+4 → Share
+
+5 → S/Row-X (share row exclusive)
+
+6 → Exclusive
+
