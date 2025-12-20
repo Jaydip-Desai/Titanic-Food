@@ -38,6 +38,11 @@ CREATE TABLE library_audit (
     old_value   VARCHAR2(50),
     new_value   VARCHAR2(50),
     action_dt   TIMESTAMP
+STORAGE (
+    INITIAL 1K
+    NEXT 2K
+    MINEXTENTS 1
+    MAXEXTENTS 5
 );
 
 PROMPT ======================================
@@ -54,6 +59,11 @@ CREATE TABLE library_book (
     book_nm VARCHAR2(30),
     author  VARCHAR2(30),
     price   NUMBER
+STORAGE (
+    INITIAL 1K
+    NEXT 2K
+    MINEXTENTS 1
+    MAXEXTENTS 5
 );
 
 PROMPT ======================================

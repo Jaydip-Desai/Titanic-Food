@@ -1,0 +1,127 @@
+-- =====================================================
+-- TOPIC   : DATABASE FRAGMENTATION (ALL LEVELS)
+-- SUBJECT : DBMS / Oracle SQL (Practical)
+-- =====================================================
+
+SET SERVEROUTPUT ON
+SET LINESIZE 200
+SET PAGESIZE 50
+SET WRAP OFF
+
+PROMPT ======================================
+PROMPT 1) TABLE LEVEL FRAGMENTATION
+PROMPT ======================================
+
+-- FIND: Internal fragmentation (unused space in table)
+DECLARE
+    total_blocks  NUMBER;
+    unused_blocks NUMBER;
+    total_bytes   NUMBER;
+    unused_bytes  NUMBER;
+    f NUMBER; b NUMBER; lb NUMBER;
+BEGIN
+    DBMS_SPACE.UNUSED_SPACE(
+        segment_owner => USER,
+        segment_name  => 'LIBRARY_BOOK',
+        segment_type  => 'TABLE',
+        total_blocks  => total_blocks,
+        total_bytes   => total_bytes,
+        unused_blocks => unused_blocks,
+        unused_bytes  => unused_bytes,
+        last_used_extent_file_id  => f,
+        last_used_extent_block_id => b,
+        last_used_block => lb
+    );
+
+    DBMS_OUTPUT.PUT_LINE('Total Blocks  : ' || total_blocks);
+    DBMS_OUTPUT.PUT_LINE('Unused Blocks : ' || unused_blocks);
+END;
+/
+-- CONCLUSION:
+-- High unused blocks indicate TABLE LEVEL fragmentation.
+
+-- RESOLVE: Shrink table
+ALTER TABLE library_book ENABLE ROW MOVEMENT;
+ALTER TABLE library_book SHRINK SPACE;
+
+-- =====================================================
+PROMPT 2) OBJECT LEVEL FRAGMENTATION (EXTENTS)
+PROMPT =====================================================
+
+-- FIND: Objects with too many extents
+SELECT
+    segment_name,
+    segment_type,
+    COUNT(*) AS total_extents
+FROM user_extents
+GROUP BY segment_name, segment_type
+HAVING COUNT(*) > 5;
+
+-- CONCLUSION:
+-- Objects with many extents are OBJECT LEVEL fragmented.
+
+-- RESOLVE: Move table to recreate extents
+ALTER TABLE library_book MOVE;
+
+-- =====================================================
+PROMPT 3) INDEX LEVEL FRAGMENTATION
+PROMPT =====================================================
+
+-- FIND: Index size vs table size
+SELECT
+    i.index_name,
+    s.bytes/1024 AS index_kb
+FROM user_indexes i
+JOIN user_segments s
+ON i.index_name = s.segment_name;
+
+-- CONCLUSION:
+-- Large index size indicates INDEX fragmentation.
+
+-- RESOLVE: Rebuild index
+ALTER INDEX SYS_C001234 REBUILD;
+-- (Replace SYS_C001234 with actual index name)
+
+-- =====================================================
+PROMPT 4) TABLESPACE LEVEL FRAGMENTATION
+PROMPT =====================================================
+
+-- FIND: Free space fragmentation in tablespace
+SELECT
+    tablespace_name,
+    COUNT(*) AS free_chunks,
+    SUM(bytes)/1024 AS free_kb
+FROM dba_free_space
+GROUP BY tablespace_name;
+
+-- CONCLUSION:
+-- High number of free chunks indicates TABLESPACE fragmentation.
+
+-- RESOLVE: Coalesce tablespace
+ALTER TABLESPACE users COALESCE;
+
+-- =====================================================
+PROMPT 5) DATABASE LEVEL FRAGMENTATION
+PROMPT =====================================================
+
+-- FIND: Segment size vs actual rows
+SELECT
+    segment_name,
+    bytes/1024 AS allocated_kb
+FROM user_segments
+WHERE segment_type = 'TABLE';
+
+-- CONCLUSION:
+-- Large allocated size with less data indicates DATABASE LEVEL fragmentation.
+
+-- RESOLVE: Full reorganization
+ALTER TABLE library_book MOVE;
+ALTER TABLE library_book SHRINK SPACE;
+
+PROMPT ======================================
+PROMPT FINAL CONCLUSION
+PROMPT ======================================
+
+-- Fragmentation is identified at table, object, index,
+-- tablespace, and database levels using space and extent queries.
+-- It is resolved by SHRINK, MOVE, INDEX REBUILD, and COALESCE.

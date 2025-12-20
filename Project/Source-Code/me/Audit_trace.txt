@@ -26,8 +26,12 @@ CREATE TABLE staff_audit (
     old_value VARCHAR2(50),
     new_value VARCHAR2(50),
     action_dt TIMESTAMP
+STORAGE (
+    INITIAL 1K
+    NEXT 2K
+    MINEXTENTS 1
+    MAXEXTENTS 5
 );
-
 -- Main table
 DROP TABLE staff PURGE;
 
@@ -36,6 +40,11 @@ CREATE TABLE staff (
     staff_name VARCHAR2(20),
     dept VARCHAR2(20),
     pay NUMBER
+STORAGE (
+    INITIAL 1K
+    NEXT 2K
+    MINEXTENTS 1
+    MAXEXTENTS 5
 );
 
 -- Trigger
